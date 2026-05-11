@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import './styles/Home.css'
 import logo from './assets/logo.png'
 import { heroExhibition, recommendedExhibitions } from './data/homeMock'
+import { useAuthStatus } from './hooks/useAuthStatus'
 import { useFavoriteExhibitions } from './hooks/useFavoriteExhibitions'
 
 function SearchIcon() {
@@ -33,6 +34,7 @@ function HeartIcon({ filled = false }: { filled?: boolean }) {
 
 function App() {
   const heroDetailPath = `/exhibitions/${heroExhibition.id}`
+  const { accountLabel, accountPath } = useAuthStatus()
   const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
 
   return (
@@ -42,10 +44,10 @@ function App() {
           <img src={logo} alt="Arbit" />
         </Link>
         <nav className="header-actions" aria-label="Primary">
-          <Link to="/search" aria-label="검색">
+          <Link to="/exhibitions/search" aria-label="검색">
             <SearchIcon />
           </Link>
-          <Link to="/login" aria-label="로그인">
+          <Link to={accountPath} aria-label={accountLabel}>
             <UserIcon />
           </Link>
         </nav>
@@ -89,7 +91,7 @@ function App() {
             <h2 id="recommend-title">당신의 추천</h2>
             <p>큐레이터가 엄선한 당신만을 위한 맞춤형 문화생활 리스트입니다.</p>
           </div>
-          <Link to="/search" className="view-all">
+          <Link to="/exhibitions/search" className="view-all">
             전체보기
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h13" />

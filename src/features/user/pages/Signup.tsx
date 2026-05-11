@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import '../styles/Signup.css'
-import logo from '../assets/logo.png'
+import logo from '../../../assets/logo.png'
 
 function Signup() {
   const navigate = useNavigate()
@@ -21,7 +21,7 @@ function Signup() {
           className="signup-form"
           onSubmit={(event) => {
             event.preventDefault()
-            navigate('/preferences')
+            navigate('/user/preferences')
           }}
         >
           <label className="signup-field">
@@ -82,7 +82,7 @@ function Signup() {
         </form>
 
         <p className="signup-login">
-          이미 회원이신가요? <Link to="/login">로그인</Link>
+          이미 회원이신가요? <Link to="/user/login">로그인</Link>
         </p>
       </section>
     </main>

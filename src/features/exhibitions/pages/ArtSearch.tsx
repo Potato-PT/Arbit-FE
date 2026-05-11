@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useMemo, useState } from 'react'
-import logo from '../assets/logo.png'
+import logo from '../../../assets/logo.png'
 import { genreFilters, searchExhibitions, seoulDistricts } from '../data/searchMock'
+import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import '../styles/ArtSearch.css'
 
 type SortOption = '거리순' | '낮은 가격순'
@@ -11,6 +12,7 @@ const periodFilters = ['진행중', '예정'] as const
 const priceFilters = ['무료', '유료'] as const
 
 function ArtSearch() {
+  const { accountLabel, accountPath } = useAuthStatus()
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(['마포구'])
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['사진/영상'])
   const [selectedPeriods, setSelectedPeriods] = useState<string[]>(['진행중'])
@@ -101,7 +103,7 @@ function ArtSearch() {
           <button type="button" aria-label="검색">
             <SearchIcon />
           </button>
-          <Link to="/login" aria-label="로그인">
+          <Link to={accountPath} aria-label={accountLabel}>
             <UserIcon />
           </Link>
         </nav>

@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
-import logo from '../assets/logo.png'
+import logo from '../../../assets/logo.png'
 import { getExhibitionDetail } from '../data/exhibitionDetails'
+import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import '../styles/ExhibitionDetail.css'
 
 function ExhibitionDetail() {
@@ -13,7 +14,7 @@ function ExhibitionDetail() {
         <DetailHeader />
         <section className="detail-not-found">
           <h1>전시를 찾을 수 없습니다</h1>
-          <Link to="/search">전시 검색으로 돌아가기</Link>
+          <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
         </section>
       </main>
     )
@@ -125,16 +126,18 @@ function ExhibitionDetail() {
 }
 
 function DetailHeader() {
+  const { accountLabel, accountPath } = useAuthStatus()
+
   return (
     <header className="detail-header">
       <Link className="detail-brand" to="/" aria-label="Arbit home">
         <img src={logo} alt="Arbit" />
       </Link>
       <nav className="detail-actions" aria-label="Primary">
-        <Link to="/search" aria-label="검색">
+        <Link to="/exhibitions/search" aria-label="검색">
           <SearchIcon />
         </Link>
-        <Link to="/login" aria-label="로그인">
+        <Link to={accountPath} aria-label={accountLabel}>
           <UserIcon />
         </Link>
       </nav>

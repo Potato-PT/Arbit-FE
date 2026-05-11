@@ -13,10 +13,10 @@ npm run lint
 ## Routes
 
 - `/` 홈
-- `/search` 전시 검색
+- `/exhibitions/search` 전시 검색
 - `/exhibitions/:id` 전시 상세
 - `/exhibitions/:id/review` 후기 작성
-- `/login` 로그인
-- `/signup` 회원가입
-- `/preferences` 취향 설정
-- `/mypage` 마이페이지
+- `/user/login` 로그인
+- `/user/signup` 회원가입
+- `/user/preferences` 취향 설정
+- `/user/mypage` 마이페이지

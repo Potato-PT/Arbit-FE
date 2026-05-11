@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import logo from '../assets/logo.png'
+import { Link, useNavigate } from 'react-router-dom'
+import logo from '../../../assets/logo.png'
 import {
   preferenceMediaCategories,
   type PreferenceDetailOption,
   type PreferenceMediaIcon,
 } from '../data/preferenceCategories'
+import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import '../styles/Preferences.css'
 
 type Option = {
@@ -31,6 +32,8 @@ const audienceOptions: Option[] = [
 ]
 
 function Preferences() {
+  const navigate = useNavigate()
+  const { accountLabel, accountPath } = useAuthStatus()
   const defaultMediaId = preferenceMediaCategories[0]?.id ?? ''
   const [selectedMediaId, setSelectedMediaId] = useState(defaultMediaId)
   const [selectedDetailIdsByMedia, setSelectedDetailIdsByMedia] = useState<Record<string, string[]>>({
@@ -100,7 +103,7 @@ function Preferences() {
         <Link className="preferences-brand" to="/" aria-label="Arbit home">
           <img src={logo} alt="Arbit" />
         </Link>
-        <Link className="preferences-user" to="/mypage" aria-label="마이페이지">
+        <Link className="preferences-user" to={accountPath} aria-label={accountLabel}>
           <UserIcon />
         </Link>
       </header>
@@ -169,7 +172,7 @@ function Preferences() {
           />
         </section>
 
-        <button className="preferences-submit" type="button">
+        <button className="preferences-submit" type="button" onClick={() => navigate('/')}>
           회원 가입하기
         </button>
       </div>
@@ -226,6 +229,17 @@ function PreferenceGroup({
 }
 
 function MediaIcon({ type }: { type: PreferenceMediaIcon }) {
+  if (type === 'art') {
+    return (
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <rect x="14" y="16" width="34" height="40" rx="3" />
+        <path d="M22 45c5-9 9-11 14-5 3-5 6-7 12-1" />
+        <circle cx="35" cy="28" r="4" />
+        <path d="M53 22h5v36H24v-5" />
+      </svg>
+    )
+  }
+
   if (type === 'theater') {
     return (
       <svg viewBox="0 0 72 72" aria-hidden="true">
@@ -240,17 +254,15 @@ function MediaIcon({ type }: { type: PreferenceMediaIcon }) {
     )
   }
 
-  if (type === 'musical') {
+  if (type === 'concert') {
     return (
       <svg viewBox="0 0 72 72" aria-hidden="true">
-        <path d="M25 28c7 3 15 3 22 0" />
-        <path d="M36 28v28" />
-        <path d="M27 56h.1" />
-        <path d="M36 60h.1" />
-        <path d="M45 56h.1" />
-        <circle cx="36" cy="19" r="5" />
-        <path d="M28 32v17" />
-        <path d="M44 32v17" />
+        <path d="M22 34v8a14 14 0 0 0 28 0v-8" />
+        <rect x="29" y="14" width="14" height="31" rx="7" />
+        <path d="M36 56v-9" />
+        <path d="M27 58h18" />
+        <path d="M18 25c-4 5-4 14 0 19" />
+        <path d="M54 25c4 5 4 14 0 19" />
       </svg>
     )
   }
@@ -258,30 +270,101 @@ function MediaIcon({ type }: { type: PreferenceMediaIcon }) {
   if (type === 'classic') {
     return (
       <svg viewBox="0 0 72 72" aria-hidden="true">
-        <path d="M24 16 29 29 42 34 29 39 24 52 19 39 6 34 19 29 24 16Z" />
-        <path d="M50 14 53 22 61 25 53 28 50 36 47 28 39 25 47 22 50 14Z" />
-        <path d="M51 43 54 50 61 53 54 56 51 63 48 56 41 53 48 50 51 43Z" />
+        <path d="M24 18v34" />
+        <path d="M48 18v34" />
+        <path d="M24 22c8-6 16-6 24 0" />
+        <path d="M24 34c8-5 16-5 24 0" />
+        <path d="M18 52h36" />
+        <path d="M30 18v34" />
+        <path d="M42 18v34" />
       </svg>
     )
   }
 
-  if (type === 'camera') {
+  if (type === 'education') {
     return (
       <svg viewBox="0 0 72 72" aria-hidden="true">
-        <path d="M18 25h10l5-7h12l5 7h4a6 6 0 0 1 6 6v22a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V31a6 6 0 0 1 6-6Z" />
-        <circle cx="36" cy="42" r="10" />
-        <path d="M51 33h.1" />
+        <path d="M16 20h18a8 8 0 0 1 8 8v30H24a8 8 0 0 0-8 8V20Z" />
+        <path d="M42 28a8 8 0 0 1 8-8h6v38H42" />
+        <path d="M23 31h10" />
+        <path d="M23 40h10" />
+        <path d="M50 31h6" />
+      </svg>
+    )
+  }
+
+  if (type === 'festival') {
+    return (
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <path d="M15 20c7 6 14 6 21 0s14-6 21 0v20c-7-6-14-6-21 0s-14 6-21 0V20Z" />
+        <path d="M15 40v18" />
+        <path d="M20 58h30" />
+        <path d="M24 50h.1" />
+        <path d="M36 48h.1" />
+        <path d="M48 50h.1" />
+      </svg>
+    )
+  }
+
+  if (type === 'koreanTraditional') {
+    return (
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <circle cx="36" cy="36" r="21" />
+        <path d="M36 15c7 6 7 15 0 21s-7 15 0 21" />
+        <path d="M36 36c-7 6-14 6-21 0" />
+        <path d="M36 36c7-6 14-6 21 0" />
+        <path d="M20 20 52 52" />
+      </svg>
+    )
+  }
+
+  if (type === 'musicalOpera') {
+    return (
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <path d="M20 18h32l-4 29c-1 8-6 13-12 13s-11-5-12-13L20 18Z" />
+        <path d="M27 30h.1" />
+        <path d="M45 30h.1" />
+        <path d="M28 45c5 4 11 4 16 0" />
+        <path d="M18 18h36" />
+        <path d="M24 12h24" />
+      </svg>
+    )
+  }
+
+  if (type === 'dance') {
+    return (
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <circle cx="36" cy="16" r="5" />
+        <path d="M36 22 25 34l11 8 12-13" />
+        <path d="M25 34 16 28" />
+        <path d="M48 29 56 36" />
+        <path d="M36 42 28 58" />
+        <path d="M36 42 51 58" />
+        <path d="M22 58h13" />
+        <path d="M46 58h12" />
+      </svg>
+    )
+  }
+
+  if (type === 'film') {
+    return (
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <rect x="14" y="20" width="44" height="32" rx="4" />
+        <path d="M14 30h44" />
+        <path d="M24 20v32" />
+        <path d="M48 20v32" />
+        <path d="m33 35 10 5-10 5V35Z" />
+        <path d="M18 26h4" />
+        <path d="M50 26h4" />
       </svg>
     )
   }
 
   return (
     <svg viewBox="0 0 72 72" aria-hidden="true">
-      <path d="M37 58h-4c-13 0-23-10-23-22s11-23 25-23c13 0 25 9 25 21 0 8-5 12-11 12h-5c-3 0-5 2-5 5 0 2 1 4 3 5-1 1-3 2-5 2Z" />
-      <circle cx="24" cy="31" r="3" />
-      <circle cx="34" cy="24" r="3" />
-      <circle cx="45" cy="29" r="3" />
-      <circle cx="24" cy="43" r="3" />
+      <circle cx="36" cy="36" r="22" />
+      <path d="M36 46v-.2" />
+      <path d="M28 28c1.6-5 6-8 11-7 5 .9 8 5 7 10-.8 4-4 6-7 8-2 1.4-3 2.7-3 5" />
     </svg>
   )
 }

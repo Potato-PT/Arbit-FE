@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { favoriteExhibitions } from '../data/myPageMock'
+import { favoriteExhibitions } from '../features/user/data/myPageMock'
 
 const FAVORITE_STORAGE_KEY = 'arbit.favoriteExhibitionIds'
 

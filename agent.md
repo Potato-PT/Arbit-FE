@@ -19,7 +19,7 @@ The UI copy is primarily Korean. Keep user-facing language consistent with the e
 - Vite
 - React Router
 - ESLint
-- Plain CSS modules by convention, organized as page-level CSS files in `src/styles`
+- Plain CSS modules by convention, organized as page-level CSS files inside each feature folder
 
 There is no backend, API client, test runner, state management library, or component library configured at the moment.
 
@@ -38,17 +38,18 @@ Use `npm run build` for TypeScript and production build verification. Use `npm r
 
 - `src/main.tsx` mounts the app and declares all routes with `BrowserRouter`.
 - `src/App.tsx` is the home page route at `/`.
-- `src/pages/` contains route-level screens:
-  - `ArtSearch.tsx` for `/search`
+- `src/features/exhibitions/` contains exhibition route screens, mock data, types, and styles:
+  - `pages/ArtSearch.tsx` for `/exhibitions/search`
   - `ExhibitionDetail.tsx` for `/exhibitions/:id`
   - `ReviewWrite.tsx` for `/exhibitions/:id/review`
-  - `Login.tsx` for `/login`
-  - `Signup.tsx` for `/signup`
-  - `Preferences.tsx` for `/preferences`
-  - `MyPage.tsx` for `/mypage`
-- `src/data/` contains local mock data and simple data helpers.
-- `src/types/` contains shared TypeScript interfaces for mock data.
-- `src/styles/` contains one CSS file per major screen.
+- `src/features/user/` contains user route screens, mock data, and styles:
+  - `pages/Login.tsx` for `/user/login`
+  - `pages/Signup.tsx` for `/user/signup`
+  - `pages/Preferences.tsx` for `/user/preferences`
+  - `pages/MyPage.tsx` for `/user/mypage`
+- `src/data/` contains home-page mock data that is still shared outside a feature.
+- `src/types/` contains home-page TypeScript interfaces that are still shared outside a feature.
+- `src/hooks/` contains shared hooks used across features.
 - `src/assets/` contains local bitmap assets such as `logo.png`, `artgallery.png`, and screen reference PNGs.
 - `public/` contains static public assets.
 
@@ -56,18 +57,18 @@ Screen reference PNG files live in `src/assets`, including references for home, 
 
 ## Routing
 
-Routes are declared directly in `src/main.tsx`. When adding a new screen, add the page component under `src/pages`, import it in `main.tsx`, and add a corresponding `<Route>`.
+Routes are declared directly in `src/main.tsx`. When adding a new screen, add the page component under the matching `src/features/<feature>/pages` folder, import it in `main.tsx`, and add a corresponding `<Route>`.
 
 Current routes:
 
 - `/`
-- `/search`
+- `/user/login`
+- `/user/signup`
+- `/user/preferences`
+- `/user/mypage`
+- `/exhibitions/search`
 - `/exhibitions/:id`
 - `/exhibitions/:id/review`
-- `/login`
-- `/signup`
-- `/preferences`
-- `/mypage`
 
 Use `Link` and router navigation rather than plain anchors for internal navigation. External URLs in mock exhibition data currently point to `https://example.com/...`.
 
@@ -76,9 +77,10 @@ Use `Link` and router navigation rather than plain anchors for internal navigati
 Mock data is intentionally typed:
 
 - Home data: `src/data/homeMock.ts` with types from `src/types/home.ts`
-- Search data: `src/data/searchMock.ts` with types from `src/types/search.ts`
-- Detail and review data: `src/data/exhibitionDetails.ts` with types from `src/types/exhibitionDetail.ts`
-- My page data: `src/data/myPageMock.ts`
+- Search data: `src/features/exhibitions/data/searchMock.ts` with types from `src/features/exhibitions/types/search.ts`
+- Detail and review data: `src/features/exhibitions/data/exhibitionDetails.ts` with types from `src/features/exhibitions/types/exhibitionDetail.ts`
+- My page data: `src/features/user/data/myPageMock.ts`
+- Preference data: `src/features/user/data/preferenceCategories.ts`
 
 Keep new mock entries aligned with the existing union types. If adding a new artwork key, update the corresponding type union and CSS selectors that render the artwork.
 

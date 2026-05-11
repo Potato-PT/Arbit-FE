@@ -1,9 +1,20 @@
-import { Link } from 'react-router-dom'
+import { type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import '../styles/Login.css'
-import artGallery from '../assets/artgallery.png'
-import logo from '../assets/logo.png'
+import artGallery from '../../../assets/artgallery.png'
+import logo from '../../../assets/logo.png'
+import { useAuthStatus } from '../../../hooks/useAuthStatus'
 
 function Login() {
+  const navigate = useNavigate()
+  const { setIsLoggedIn } = useAuthStatus()
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsLoggedIn(true)
+    navigate('/user/mypage')
+  }
+
   return (
     <main className="login-page" aria-label="Arbit login">
       <div className="login-content">
@@ -12,7 +23,7 @@ function Login() {
         </Link>
 
         <section className="login-card" aria-label="로그인">
-          <form className="login-form">
+          <form className="login-form" onSubmit={handleSubmit}>
             <label className="login-field">
               <span className="login-label">아이디</span>
               <span className="login-control">
@@ -52,7 +63,7 @@ function Login() {
           <div className="login-divider" />
 
           <p className="login-signup">
-            처음 오셨나요? <Link to="/signup">회원 가입하기</Link>
+            처음 오셨나요? <Link to="/user/signup">회원 가입하기</Link>
           </p>
         </section>
 

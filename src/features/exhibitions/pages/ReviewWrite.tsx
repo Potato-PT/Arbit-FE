@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import logo from '../assets/logo.png'
+import logo from '../../../assets/logo.png'
 import { addExhibitionReview, getExhibitionDetail } from '../data/exhibitionDetails'
+import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import '../styles/ReviewWrite.css'
 
 const visitYears = ['2026', '2025', '2024', '2023', '2022']
@@ -33,7 +34,7 @@ function ReviewWrite() {
         <ReviewHeader />
         <section className="review-write-missing">
           <h1>전시를 찾을 수 없습니다</h1>
-          <Link to="/search">전시 검색으로 돌아가기</Link>
+          <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
         </section>
       </main>
     )
@@ -175,16 +176,41 @@ function ReviewWrite() {
 }
 
 function ReviewHeader() {
+  const { accountLabel, accountPath } = useAuthStatus()
+
   return (
     <header className="review-write-header">
       <Link className="review-write-brand" to="/" aria-label="Arbit home">
         <img src={logo} alt="Arbit" />
       </Link>
       <nav className="review-write-nav" aria-label="Primary">
-        <Link to="/search">검색</Link>
-        <Link to="/mypage">마이페이지</Link>
+        <Link to="/exhibitions/search" aria-label="검색">
+          <SearchIcon />
+        </Link>
+        <Link to={accountPath} aria-label={accountLabel}>
+          <UserIcon />
+        </Link>
       </nav>
     </header>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="10.6" cy="10.6" r="5.7" />
+      <path d="m15 15 4.2 4.2" />
+    </svg>
+  )
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8.3" r="3" />
+      <path d="M7.1 17.2c.85-2.45 2.48-3.68 4.9-3.68s4.05 1.23 4.9 3.68" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
   )
 }
 

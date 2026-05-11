@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import logo from '../assets/logo.png'
+import logo from '../../../assets/logo.png'
 import {
   favoriteExhibitions,
   myReviews,
@@ -10,7 +10,8 @@ import {
   type MyPageTab,
   type MyReview,
 } from '../data/myPageMock'
-import { useFavoriteExhibitions } from '../hooks/useFavoriteExhibitions'
+import { useAuthStatus } from '../../../hooks/useAuthStatus'
+import { useFavoriteExhibitions } from '../../../hooks/useFavoriteExhibitions'
 import '../styles/MyPage.css'
 
 const tabs: { id: MyPageTab; label: string }[] = [
@@ -21,6 +22,7 @@ const tabs: { id: MyPageTab; label: string }[] = [
 
 function MyPage() {
   const [activeTab, setActiveTab] = useState<MyPageTab>('favorites')
+  const { accountLabel, accountPath } = useAuthStatus()
   const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
 
   return (
@@ -30,10 +32,10 @@ function MyPage() {
           <img src={logo} alt="Arbit" />
         </Link>
         <nav className="mypage-actions" aria-label="Primary">
-          <Link to="/search" aria-label="검색">
+          <Link to="/exhibitions/search" aria-label="검색">
             <SearchIcon />
           </Link>
-          <Link to="/mypage" aria-label="마이페이지">
+          <Link to={accountPath} aria-label={accountLabel}>
             <UserIcon />
           </Link>
         </nav>
@@ -56,7 +58,7 @@ function MyPage() {
         <div className="mypage-tabs" role="tablist" aria-label="마이페이지 탭">
           {tabs.map((tab) => (
             tab.id === 'preferences' ? (
-              <Link className="mypage-tab" role="tab" aria-selected="false" key={tab.id} to="/preferences">
+              <Link className="mypage-tab" role="tab" aria-selected="false" key={tab.id} to="/user/preferences">
                 {tab.label}
               </Link>
             ) : (
@@ -201,7 +203,7 @@ function FavoritesPanel({ favoriteIdSet, onToggleFavorite }: FavoritesPanelProps
       {visibleFavoriteExhibitions.length === 0 && (
         <div className="favorite-empty" role="status">
           <p>즐겨찾기한 전시가 없습니다.</p>
-          <Link to="/search">전시 검색으로 이동</Link>
+          <Link to="/exhibitions/search">전시 검색으로 이동</Link>
         </div>
       )}
     </div>

@@ -1,9 +1,15 @@
 export type PreferenceMediaIcon =
-  | 'palette'
+  | 'art'
   | 'theater'
-  | 'musical'
+  | 'concert'
   | 'classic'
-  | 'camera'
+  | 'education'
+  | 'festival'
+  | 'koreanTraditional'
+  | 'musicalOpera'
+  | 'dance'
+  | 'film'
+  | 'other'
 
 export interface PreferenceDetailOption {
   id: string
@@ -21,7 +27,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'art-exhibition',
     label: '전시/미술',
-    icon: 'palette',
+    icon: 'art',
     details: [
       { id: 'solo-invitational', label: '개인전/초대전' },
       { id: 'planned-theme', label: '기획/테마 전시' },
@@ -41,7 +47,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'education-experience',
     label: '교육/체험',
-    icon: 'palette',
+    icon: 'education',
     details: [
       { id: 'making-workshop', label: '만들기/공방 체험' },
       { id: 'book-reading', label: '도서/독서 연계' },
@@ -50,8 +56,8 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   },
   {
     id: 'festival',
-    label: '축제(통합)',
-    icon: 'camera',
+    label: '축제',
+    icon: 'festival',
     details: [
       { id: 'outdoor-experience', label: '야외 체험 행사' },
       { id: 'culture-festival', label: '종합 문화 페스티벌' },
@@ -72,7 +78,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'concert',
     label: '콘서트',
-    icon: 'musical',
+    icon: 'concert',
     details: [
       { id: 'jazz-crossover', label: '재즈/크로스오버' },
       { id: 'popular-indie', label: '대중/인디 음악' },
@@ -83,7 +89,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'korean-traditional-music',
     label: '국악',
-    icon: 'classic',
+    icon: 'koreanTraditional',
     details: [
       { id: 'traditional-gugak', label: '전통 국악' },
       { id: 'creative-fusion-gugak', label: '창작/퓨전 국악' },
@@ -92,7 +98,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'musical-opera',
     label: '뮤지컬/오페라',
-    icon: 'musical',
+    icon: 'musicalOpera',
     details: [
       { id: 'musical', label: '뮤지컬' },
       { id: 'opera', label: '오페라' },
@@ -101,7 +107,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'dance',
     label: '무용',
-    icon: 'theater',
+    icon: 'dance',
     details: [
       { id: 'ballet', label: '발레' },
       { id: 'contemporary-creative-dance', label: '현대/창작무용' },
@@ -111,7 +117,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'film',
     label: '영화',
-    icon: 'camera',
+    icon: 'film',
     details: [
       { id: 'special-screening-festa', label: '특별 상영회/페스타' },
       { id: 'classic-independent-art-film', label: '고전/독립/예술 영화' },
@@ -120,7 +126,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   {
     id: 'other',
     label: '기타',
-    icon: 'palette',
+    icon: 'other',
     details: [{ id: 'other', label: '기타' }],
   },
 ]
