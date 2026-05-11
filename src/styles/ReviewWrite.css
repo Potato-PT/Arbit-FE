@@ -1,0 +1,352 @@
+.review-write-page {
+  min-height: 100svh;
+  background: #ffffff;
+  color: #262321;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  letter-spacing: 0;
+}
+
+.review-write-header {
+  height: 98px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.review-write-brand,
+.review-write-brand img {
+  display: block;
+}
+
+.review-write-brand img {
+  width: 58px;
+  height: auto;
+  object-fit: contain;
+}
+
+.review-write-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.review-write-nav a {
+  color: #675e56;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.review-write-shell {
+  display: grid;
+  grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
+  gap: clamp(34px, 6vw, 72px);
+  padding: 38px 48px 120px;
+}
+
+.review-write-intro {
+  padding-top: 22px;
+}
+
+.review-write-intro span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #ebe3dc;
+  color: #8b7b6c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.review-write-intro h1 {
+  margin: 18px 0 18px;
+  color: #222222;
+  font-size: clamp(42px, 5vw, 58px);
+  font-weight: 400;
+  line-height: 1.12;
+}
+
+.review-write-intro p {
+  margin: 0;
+  color: #5f5953;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.review-write-form {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 40px;
+  border-left: 4px solid #e2c5a4;
+  border-radius: 0 24px 24px 0;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(226, 197, 164, 0.22), rgba(255, 255, 255, 0) 34%),
+    #ffffff;
+  box-shadow: 0 14px 36px rgba(48, 42, 36, 0.08);
+}
+
+.review-rating-field,
+.review-visit-field,
+.review-public-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.review-rating-field legend,
+.review-visit-field legend,
+.review-public-field legend,
+.review-field span {
+  margin-bottom: 11px;
+  color: #6b625b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.star-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.star-picker button {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ece4dc;
+  border-radius: 50%;
+  background: #fffdfb;
+  color: #c9beb3;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 120ms ease;
+}
+
+.star-picker button svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.star-picker button.is-selected {
+  border-color: #d7b88f;
+  background: #fbf1e7;
+  color: #c79254;
+  box-shadow: 0 8px 18px rgba(199, 146, 84, 0.16);
+}
+
+.star-picker button:hover {
+  border-color: #d9bc99;
+  background: #fff8f1;
+  color: #c79254;
+  transform: translateY(-1px);
+}
+
+.star-picker button:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.star-picker button:focus-visible {
+  outline: 3px solid rgba(217, 188, 153, 0.34);
+  outline-offset: 3px;
+}
+
+.review-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-field textarea,
+.review-field input,
+.visit-selects select {
+  width: 100%;
+  border: 1px solid #eee8e2;
+  border-radius: 18px;
+  background: #fffdfb;
+  color: #2f2b28;
+  font: inherit;
+  outline: 0;
+}
+
+.review-field textarea {
+  min-height: 190px;
+  resize: vertical;
+  padding: 18px 20px;
+  line-height: 1.58;
+}
+
+.review-field input {
+  height: 52px;
+  padding: 0 18px;
+}
+
+.visit-selects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.visit-selects label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.visit-selects span {
+  color: #8c8178;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.visit-selects select {
+  height: 54px;
+  appearance: none;
+  padding: 0 46px 0 18px;
+  background:
+    linear-gradient(45deg, transparent 50%, #8c7660 50%) right 22px center / 7px 7px no-repeat,
+    linear-gradient(135deg, #8c7660 50%, transparent 50%) right 17px center / 7px 7px no-repeat,
+    #fffdfb;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.review-field textarea:focus,
+.review-field input:focus,
+.visit-selects select:focus {
+  border-color: #d9bc99;
+  box-shadow: 0 0 0 3px rgba(217, 188, 153, 0.18);
+}
+
+.review-public-field {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.review-public-field legend {
+  width: 100%;
+}
+
+.review-public-field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4d4741;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.review-public-field input {
+  width: 16px;
+  height: 16px;
+  accent-color: #d9bc99;
+}
+
+.review-error {
+  margin: -6px 0 0;
+  color: #9d4d40;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.review-write-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.review-submit,
+.review-cancel {
+  min-height: 56px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.review-submit {
+  border: 0;
+  background: #dcc4a8;
+  color: #725f4b;
+}
+
+.review-cancel {
+  border: 1px solid #e7ded5;
+  background: #ffffff;
+  color: #675e56;
+}
+
+.review-write-missing {
+  padding: 80px 48px;
+}
+
+.review-write-missing h1 {
+  margin: 0 0 18px;
+  font-size: 38px;
+  font-weight: 400;
+}
+
+.review-write-missing a {
+  color: #8c7660;
+  font-weight: 700;
+}
+
+@media (max-width: 860px) {
+  .review-write-shell {
+    grid-template-columns: 1fr;
+    padding: 22px 24px 96px;
+  }
+
+  .review-write-header {
+    padding: 0 24px;
+  }
+
+  .review-write-form {
+    padding: 30px 24px;
+  }
+}
+
+@media (max-width: 560px) {
+  .review-write-nav {
+    gap: 14px;
+  }
+
+  .review-write-nav a {
+    font-size: 12px;
+  }
+
+  .review-write-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .star-picker button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .star-picker button svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .visit-selects {
+    grid-template-columns: 1fr;
+  }
+}
