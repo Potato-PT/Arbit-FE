@@ -6,9 +6,11 @@ import {
   myReviews,
   preferenceTags,
   profile,
+  type FavoriteExhibition,
   type MyPageTab,
   type MyReview,
 } from '../data/myPageMock'
+import { useFavoriteExhibitions } from '../hooks/useFavoriteExhibitions'
 import '../styles/MyPage.css'
 
 const tabs: { id: MyPageTab; label: string }[] = [
@@ -19,6 +21,7 @@ const tabs: { id: MyPageTab; label: string }[] = [
 
 function MyPage() {
   const [activeTab, setActiveTab] = useState<MyPageTab>('favorites')
+  const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
 
   return (
     <main className="mypage" aria-label="마이페이지">
@@ -71,7 +74,9 @@ function MyPage() {
           ))}
         </div>
 
-        {activeTab === 'favorites' && <FavoritesPanel />}
+        {activeTab === 'favorites' && (
+          <FavoritesPanel favoriteIdSet={favoriteIdSet} onToggleFavorite={toggleFavorite} />
+        )}
         {activeTab === 'reviews' && <ReviewsPanel />}
         {activeTab === 'preferences' && (
           <div className="mypage-empty" role="tabpanel">
@@ -168,7 +173,14 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
-function FavoritesPanel() {
+interface FavoritesPanelProps {
+  favoriteIdSet: Set<string>
+  onToggleFavorite: (id: string) => void
+}
+
+function FavoritesPanel({ favoriteIdSet, onToggleFavorite }: FavoritesPanelProps) {
+  const visibleFavoriteExhibitions = favoriteExhibitions.filter((item) => favoriteIdSet.has(item.id))
+
   return (
     <div className="favorites-panel" role="tabpanel">
       <section className="preference-block" aria-labelledby="preference-title">
@@ -181,29 +193,56 @@ function FavoritesPanel() {
       </section>
 
       <div className="favorite-grid">
-        {favoriteExhibitions.map((item, index) => (
-          <Link className="favorite-card" key={`${item.id}-${index}`} to={`/exhibitions/${item.id}`}>
-            <div className={`favorite-poster favorite-poster-${item.artwork}`}>
-              <span className="favorite-dday">{item.dday}</span>
-              <span className="favorite-heart" aria-label={`${item.title} 즐겨찾기`} role="img">
-                <HeartIcon filled={item.liked} />
-              </span>
-              <span className="favorite-art" />
-            </div>
-            <span className="favorite-category">{item.category}</span>
-            <h3>{item.title}</h3>
-            <p className="favorite-meta">
-              <CalendarIcon />
-              {item.period}
-            </p>
-            <p className="favorite-meta">
-              <PinIcon />
-              {item.venue}
-            </p>
-          </Link>
+        {visibleFavoriteExhibitions.map((item) => (
+          <FavoriteCard item={item} key={item.id} onToggleFavorite={onToggleFavorite} />
         ))}
       </div>
+
+      {visibleFavoriteExhibitions.length === 0 && (
+        <div className="favorite-empty" role="status">
+          <p>즐겨찾기한 전시가 없습니다.</p>
+          <Link to="/search">전시 검색으로 이동</Link>
+        </div>
+      )}
     </div>
+  )
+}
+
+function FavoriteCard({
+  item,
+  onToggleFavorite,
+}: {
+  item: FavoriteExhibition
+  onToggleFavorite: (id: string) => void
+}) {
+  return (
+    <article className="favorite-card">
+      <Link className="favorite-card-link" to={`/exhibitions/${item.id}`}>
+        <div className={`favorite-poster favorite-poster-${item.artwork}`}>
+          <span className="favorite-dday">{item.dday}</span>
+          <span className="favorite-art" />
+        </div>
+        <span className="favorite-category">{item.category}</span>
+        <h3>{item.title}</h3>
+        <p className="favorite-meta">
+          <CalendarIcon />
+          {item.period}
+        </p>
+        <p className="favorite-meta">
+          <PinIcon />
+          {item.venue}
+        </p>
+      </Link>
+      <button
+        aria-label={`${item.title} 즐겨찾기 해제`}
+        aria-pressed={true}
+        className="favorite-heart"
+        onClick={() => onToggleFavorite(item.id)}
+        type="button"
+      >
+        <HeartIcon filled />
+      </button>
+    </article>
   )
 }
 

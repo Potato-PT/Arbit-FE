@@ -37,14 +37,13 @@ coverage/
 *.tmp
 *.temp
 
-#figma 디자인 인식용 사진들
-login.png
-art-detail.png
-art-search.png
-myspace-bookmark.png
-myspace-review.png
-signup.png
-home-dashboard.png
-preference-settings.png
-
+# figma 디자인 인식용 사진들
+/login.png
+/art-detail.png
+/art-search.png
+/myspace-bookmark.png
+/myspace-review.png
+/signup.png
+/home-dashboard.png
+/preference-settings.png
 

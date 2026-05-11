@@ -238,6 +238,12 @@
   color: #ffffff;
 }
 
+.detail-chip.is-selected {
+  background: #9a7650;
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(93, 65, 37, 0.16);
+}
+
 .freeform-section {
   margin-bottom: 88px;
 }

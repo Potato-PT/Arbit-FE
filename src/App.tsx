@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import './styles/Home.css'
 import logo from './assets/logo.png'
 import { heroExhibition, recommendedExhibitions } from './data/homeMock'
+import { useFavoriteExhibitions } from './hooks/useFavoriteExhibitions'
 
 function SearchIcon() {
   return (
@@ -32,6 +33,7 @@ function HeartIcon({ filled = false }: { filled?: boolean }) {
 
 function App() {
   const heroDetailPath = `/exhibitions/${heroExhibition.id}`
+  const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
 
   return (
     <main className="home-page" aria-label="Arbit home">
@@ -97,21 +99,33 @@ function App() {
         </div>
 
         <div className="card-grid">
-          {recommendedExhibitions.map((item) => (
-            <Link className="exhibition-card" key={item.id} to={`/exhibitions/${item.id}`}>
-              <div className={`poster poster-${item.artwork}`}>
-                <span className={`dday ${item.dday === 'D-64' ? 'muted' : ''}`}>{item.dday}</span>
-                <span aria-label={`${item.title} 찜하기`} className="heart-button" role="img">
-                  <HeartIcon filled={item.liked} />
-                </span>
-                <span className="poster-art" />
-              </div>
-              <span className="category">{item.category}</span>
-              <h3>{item.title}</h3>
-              <p className="meta calendar">{item.period}</p>
-              <p className="meta pin">{item.venue}</p>
-            </Link>
-          ))}
+          {recommendedExhibitions.map((item) => {
+            const isFavorite = favoriteIdSet.has(item.id)
+
+            return (
+              <article className="exhibition-card" key={item.id}>
+                <Link className="exhibition-card-link" to={`/exhibitions/${item.id}`}>
+                  <div className={`poster poster-${item.artwork}`}>
+                    <span className={`dday ${item.dday === 'D-64' ? 'muted' : ''}`}>{item.dday}</span>
+                    <span className="poster-art" />
+                  </div>
+                  <span className="category">{item.category}</span>
+                  <h3>{item.title}</h3>
+                  <p className="meta calendar">{item.period}</p>
+                  <p className="meta pin">{item.venue}</p>
+                </Link>
+                <button
+                  aria-label={isFavorite ? `${item.title} 즐겨찾기 해제` : `${item.title} 즐겨찾기 추가`}
+                  aria-pressed={isFavorite}
+                  className="heart-button"
+                  onClick={() => toggleFavorite(item.id)}
+                  type="button"
+                >
+                  <HeartIcon filled={isFavorite} />
+                </button>
+              </article>
+            )
+          })}
         </div>
       </section>
 

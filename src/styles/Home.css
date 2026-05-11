@@ -310,6 +310,11 @@
 }
 
 .exhibition-card {
+  position: relative;
+  min-width: 0;
+}
+
+.exhibition-card-link {
   display: block;
   min-width: 0;
   color: inherit;
@@ -349,7 +354,7 @@
 
 .heart-button {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   top: 16px;
   right: 16px;
   width: 42px;
@@ -360,6 +365,25 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.84);
   color: #4d4945;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.heart-button:hover {
+  background: #ffffff;
+  color: #e84d45;
+  transform: translateY(-1px);
+}
+
+.heart-button[aria-pressed="true"] {
+  color: #e84d45;
+}
+
+.heart-button:focus-visible {
+  outline: 3px solid rgba(232, 77, 69, 0.34);
+  outline-offset: 3px;
 }
 
 .heart-button svg {

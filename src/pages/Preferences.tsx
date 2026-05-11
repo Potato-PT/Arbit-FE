@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo.png'
+import {
+  preferenceMediaCategories,
+  type PreferenceDetailOption,
+  type PreferenceMediaIcon,
+} from '../data/preferenceCategories'
 import '../styles/Preferences.css'
 
 type Option = {
@@ -8,36 +13,13 @@ type Option = {
   label: string
 }
 
-type MediaOption = Option & {
-  icon: 'palette' | 'theater' | 'musical' | 'classic' | 'camera'
-}
-
-const mediaOptions: MediaOption[] = [
-  { id: 'art', label: '전시/미술', icon: 'palette' },
-  { id: 'theater', label: '연극', icon: 'theater' },
-  { id: 'musical-opera', label: '뮤지컬/오페라', icon: 'musical' },
-  { id: 'classic', label: '클래식 및 독주/독창회', icon: 'classic' },
-  { id: 'photo', label: '사진/미디어아트', icon: 'camera' },
-]
-
-const detailOptions: Option[] = [
-  { id: 'solo-invitational', label: '개인전/초대전' },
-  { id: 'special-planned', label: '특별전/기획전' },
-  { id: 'craft-museum', label: '공예/박물관 전시' },
-  { id: 'regular-art', label: '미술관 정기전' },
-]
-
 const moodOptions: Option[] = [
-  { id: 'calm', label: '여유롭고 잔잔함' },
-  { id: 'lively', label: '신나고 활기찬' },
-  { id: 'fresh', label: '새롭고 실험적인' },
-  { id: 'romantic', label: '낭만적이고 감성적인' },
-  { id: 'light', label: '유쾌하고 가벼운' },
-  { id: 'grand', label: '웅장하고 감동적인' },
-  { id: 'warm', label: '따뜻하고 포근한' },
-  { id: 'deep', label: '깊이 있는 사색적인' },
-  { id: 'traditional', label: '전통적이고 격조 있는' },
-  { id: 'nature', label: '자연 속 힐링' },
+  { id: 'healing-emotional', label: '힐링/감성' },
+  { id: 'lively-active', label: '신나는/활기찬' },
+  { id: 'moving-grand', label: '감동/웅장' },
+  { id: 'traditional-cultural', label: '전통/문화' },
+  { id: 'family-friendly', label: '가족친화' },
+  { id: 'academic-reflective', label: '학술/사색적' },
 ]
 
 const audienceOptions: Option[] = [
@@ -49,11 +31,19 @@ const audienceOptions: Option[] = [
 ]
 
 function Preferences() {
-  const [selectedMedia, setSelectedMedia] = useState<string[]>(['art'])
-  const [selectedDetails, setSelectedDetails] = useState<string[]>(['special-planned'])
-  const [selectedMoods, setSelectedMoods] = useState<string[]>(['calm', 'light', 'warm'])
+  const defaultMediaId = preferenceMediaCategories[0]?.id ?? ''
+  const [selectedMediaId, setSelectedMediaId] = useState(defaultMediaId)
+  const [selectedDetailIdsByMedia, setSelectedDetailIdsByMedia] = useState<Record<string, string[]>>({
+    [defaultMediaId]: [preferenceMediaCategories[0]?.details[0]?.id ?? ''].filter(Boolean),
+  })
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(['healing-emotional'])
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>(['adult'])
   const [freeText, setFreeText] = useState('')
+  const selectedMediaCategory =
+    preferenceMediaCategories.find((category) => category.id === selectedMediaId) ??
+    preferenceMediaCategories[0]
+  const detailOptions = selectedMediaCategory?.details ?? []
+  const selectedDetails = selectedDetailIdsByMedia[selectedMediaId] ?? []
 
   const toggleSelection = (
     id: string,
@@ -73,6 +63,35 @@ function Preferences() {
     setSelected: (nextSelected: string[]) => void,
   ) => {
     setSelected(selected.length === options.length ? [] : options.map((option) => option.id))
+  }
+
+  const toggleDetailSelection = (id: string) => {
+    setSelectedDetailIdsByMedia((currentSelections) => {
+      const currentSelectedDetails = currentSelections[selectedMediaId] ?? []
+      const nextSelectedDetails = currentSelectedDetails.includes(id)
+        ? currentSelectedDetails.filter((selectedId) => selectedId !== id)
+        : [...currentSelectedDetails, id]
+
+      return {
+        ...currentSelections,
+        [selectedMediaId]: nextSelectedDetails,
+      }
+    })
+  }
+
+  const toggleAllDetails = () => {
+    setSelectedDetailIdsByMedia((currentSelections) => {
+      const currentSelectedDetails = currentSelections[selectedMediaId] ?? []
+      const nextSelectedDetails =
+        currentSelectedDetails.length === detailOptions.length
+          ? []
+          : detailOptions.map((option) => option.id)
+
+      return {
+        ...currentSelections,
+        [selectedMediaId]: nextSelectedDetails,
+      }
+    })
   }
 
   return (
@@ -95,8 +114,8 @@ function Preferences() {
         <section className="preferences-section" aria-labelledby="media-title">
           <h2 id="media-title">매체 선택</h2>
           <div className="media-scroll" aria-label="매체 옵션">
-            {mediaOptions.map((option) => {
-              const isSelected = selectedMedia.includes(option.id)
+            {preferenceMediaCategories.map((option) => {
+              const isSelected = selectedMediaId === option.id
 
               return (
                 <button
@@ -104,7 +123,7 @@ function Preferences() {
                   type="button"
                   aria-pressed={isSelected}
                   key={option.id}
-                  onClick={() => toggleSelection(option.id, selectedMedia, setSelectedMedia)}
+                  onClick={() => setSelectedMediaId(option.id)}
                 >
                   {isSelected && <CheckIcon />}
                   <MediaIcon type={option.icon} />
@@ -119,8 +138,9 @@ function Preferences() {
           title="세부 매체 선택"
           options={detailOptions}
           selected={selectedDetails}
-          onToggle={(id) => toggleSelection(id, selectedDetails, setSelectedDetails)}
-          onToggleAll={() => toggleAll(detailOptions, selectedDetails, setSelectedDetails)}
+          onToggle={toggleDetailSelection}
+          onToggleAll={toggleAllDetails}
+          chipClassName="detail-chip"
         />
 
         <PreferenceGroup
@@ -163,12 +183,14 @@ function PreferenceGroup({
   selected,
   onToggle,
   onToggleAll,
+  chipClassName = '',
 }: {
   title: string
-  options: Option[]
+  options: Option[] | PreferenceDetailOption[]
   selected: string[]
   onToggle: (id: string) => void
   onToggleAll: () => void
+  chipClassName?: string
 }) {
   return (
     <section className="preferences-section" aria-labelledby={`${title}-title`}>
@@ -184,7 +206,11 @@ function PreferenceGroup({
 
           return (
             <button
-              className={isSelected ? 'preference-chip is-selected' : 'preference-chip'}
+              className={[
+                'preference-chip',
+                chipClassName,
+                isSelected ? 'is-selected' : '',
+              ].filter(Boolean).join(' ')}
               type="button"
               aria-pressed={isSelected}
               key={option.id}
@@ -199,7 +225,7 @@ function PreferenceGroup({
   )
 }
 
-function MediaIcon({ type }: { type: MediaOption['icon'] }) {
+function MediaIcon({ type }: { type: PreferenceMediaIcon }) {
   if (type === 'theater') {
     return (
       <svg viewBox="0 0 72 72" aria-hidden="true">
