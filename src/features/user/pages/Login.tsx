@@ -1,15 +1,18 @@
-import { type FormEvent } from 'react'
+import type { ComponentProps } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import '../styles/Login.css'
 import artGallery from '../../../assets/artgallery.png'
 import logo from '../../../assets/logo.png'
+import AppFooter from '../../../components/AppFooter'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
+
+type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
 
 function Login() {
   const navigate = useNavigate()
   const { setIsLoggedIn } = useAuthStatus()
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: FormSubmitHandler = (event) => {
     event.preventDefault()
     setIsLoggedIn(true)
     navigate('/user/mypage')
@@ -70,15 +73,7 @@ function Login() {
         <img className="login-gallery" src={artGallery} alt="" aria-hidden="true" />
       </div>
 
-      <footer className="login-footer">
-        <nav aria-label="Footer links">
-          <a href="/">Privacy</a>
-          <a href="/">Terms</a>
-          <a href="/">Exhibition Guidelines</a>
-          <a href="/">Press</a>
-        </nav>
-        <p>© 2026 Arbit. All rights reserved.</p>
-      </footer>
+      <AppFooter />
     </main>
   )
 }

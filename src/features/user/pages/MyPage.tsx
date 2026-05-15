@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import logo from '../../../assets/logo.png'
+import AppHeader from '../../../components/AppHeader'
+import AppFooter from '../../../components/AppFooter'
 import {
   favoriteExhibitions,
   myReviews,
@@ -10,7 +11,6 @@ import {
   type MyPageTab,
   type MyReview,
 } from '../data/myPageMock'
-import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { useFavoriteExhibitions } from '../../../hooks/useFavoriteExhibitions'
 import '../styles/MyPage.css'
 
@@ -22,24 +22,11 @@ const tabs: { id: MyPageTab; label: string }[] = [
 
 function MyPage() {
   const [activeTab, setActiveTab] = useState<MyPageTab>('favorites')
-  const { accountLabel, accountPath } = useAuthStatus()
   const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
 
   return (
     <main className="mypage" aria-label="마이페이지">
-      <header className="mypage-header">
-        <Link className="mypage-brand" to="/" aria-label="Arbit home">
-          <img src={logo} alt="Arbit" />
-        </Link>
-        <nav className="mypage-actions" aria-label="Primary">
-          <Link to="/exhibitions/search" aria-label="검색">
-            <SearchIcon />
-          </Link>
-          <Link to={accountPath} aria-label={accountLabel}>
-            <UserIcon />
-          </Link>
-        </nav>
-      </header>
+      <AppHeader />
 
       <section className="profile-section" aria-labelledby="profile-name">
         <div className="profile-avatar" role="img" aria-label={profile.avatarAlt}>
@@ -87,15 +74,7 @@ function MyPage() {
         )}
       </section>
 
-      <footer className="mypage-footer">
-        <nav aria-label="Footer">
-          <a href="/">Privacy</a>
-          <a href="/">Terms</a>
-          <a href="/">Exhibition Guidelines</a>
-          <a href="/">Press</a>
-        </nav>
-        <p>© 2026 Arbit. All rights reserved.</p>
-      </footer>
+      <AppFooter />
     </main>
   )
 }
@@ -245,25 +224,6 @@ function FavoriteCard({
         <HeartIcon filled />
       </button>
     </article>
-  )
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="10.6" cy="10.6" r="5.7" />
-      <path d="m15 15 4.2 4.2" />
-    </svg>
-  )
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8.3" r="3" />
-      <path d="M7.1 17.2c.85-2.45 2.48-3.68 4.9-3.68s4.05 1.23 4.9 3.68" />
-      <circle cx="12" cy="12" r="9" />
-    </svg>
   )
 }
 

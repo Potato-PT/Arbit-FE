@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
-import logo from '../../../assets/logo.png'
+import AppHeader from '../../../components/AppHeader'
+import AppFooter from '../../../components/AppFooter'
 import { getExhibitionDetail } from '../data/exhibitionDetails'
-import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import '../styles/ExhibitionDetail.css'
 
 function ExhibitionDetail() {
@@ -11,7 +11,7 @@ function ExhibitionDetail() {
   if (!exhibition) {
     return (
       <main className="detail-page">
-        <DetailHeader />
+        <AppHeader />
         <section className="detail-not-found">
           <h1>전시를 찾을 수 없습니다</h1>
           <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
@@ -22,7 +22,7 @@ function ExhibitionDetail() {
 
   return (
     <main className="detail-page" aria-label={`${exhibition.title} 상세`}>
-      <DetailHeader />
+      <AppHeader />
 
       <section className="detail-hero" aria-labelledby="detail-title">
         <div className={`detail-art detail-art-${exhibition.artwork}`} aria-hidden="true">
@@ -112,55 +112,8 @@ function ExhibitionDetail() {
         </div>
       </section>
 
-      <footer className="detail-footer">
-        <nav aria-label="Footer">
-          <a href="/">Privacy</a>
-          <a href="/">Terms</a>
-          <a href="/">Exhibition Guidelines</a>
-          <a href="/">Press</a>
-        </nav>
-        <p>© 2026 Arbit. All rights reserved.</p>
-      </footer>
+      <AppFooter />
     </main>
-  )
-}
-
-function DetailHeader() {
-  const { accountLabel, accountPath } = useAuthStatus()
-
-  return (
-    <header className="detail-header">
-      <Link className="detail-brand" to="/" aria-label="Arbit home">
-        <img src={logo} alt="Arbit" />
-      </Link>
-      <nav className="detail-actions" aria-label="Primary">
-        <Link to="/exhibitions/search" aria-label="검색">
-          <SearchIcon />
-        </Link>
-        <Link to={accountPath} aria-label={accountLabel}>
-          <UserIcon />
-        </Link>
-      </nav>
-    </header>
-  )
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="10.6" cy="10.6" r="5.7" />
-      <path d="m15 15 4.2 4.2" />
-    </svg>
-  )
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8.3" r="3" />
-      <path d="M7.1 17.2c.85-2.45 2.48-3.68 4.9-3.68s4.05 1.23 4.9 3.68" />
-      <circle cx="12" cy="12" r="9" />
-    </svg>
   )
 }
 

@@ -8,48 +8,6 @@
   letter-spacing: 0;
 }
 
-.search-header {
-  height: 98px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 clamp(22px, 4vw, 40px);
-  border-bottom: 1px solid #f3f0ec;
-}
-
-.search-brand,
-.search-brand img {
-  display: block;
-}
-
-.search-brand img {
-  width: 149.299px;
-  height: auto;
-  object-fit: contain;
-}
-
-.search-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-}
-
-.search-header-actions button,
-.search-header-actions a {
-  width: 33.6px;
-  height: 33.6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px;
-  border: 0;
-  background: transparent;
-  color: #5b5752;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.search-header-actions svg,
 .search-input svg,
 .location-input svg,
 .filter-title svg,
@@ -571,10 +529,6 @@
 }
 
 @media (max-width: 640px) {
-  .search-header {
-    height: 76px;
-  }
-
   .search-shell {
     padding: 20px;
   }

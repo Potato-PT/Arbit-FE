@@ -1,28 +1,9 @@
 import { Link } from 'react-router-dom'
 import './styles/Home.css'
-import logo from './assets/logo.png'
 import { heroExhibition, recommendedExhibitions } from './data/homeMock'
-import { useAuthStatus } from './hooks/useAuthStatus'
 import { useFavoriteExhibitions } from './hooks/useFavoriteExhibitions'
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="10.6" cy="10.6" r="5.7" />
-      <path d="m15 15 4.2 4.2" />
-    </svg>
-  )
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8.3" r="3" />
-      <path d="M7.1 17.2c.85-2.45 2.48-3.68 4.9-3.68s4.05 1.23 4.9 3.68" />
-      <circle cx="12" cy="12" r="9" />
-    </svg>
-  )
-}
+import AppHeader from './components/AppHeader'
+import AppFooter from './components/AppFooter'
 
 function HeartIcon({ filled = false }: { filled?: boolean }) {
   return (
@@ -34,24 +15,11 @@ function HeartIcon({ filled = false }: { filled?: boolean }) {
 
 function App() {
   const heroDetailPath = `/exhibitions/${heroExhibition.id}`
-  const { accountLabel, accountPath } = useAuthStatus()
   const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
 
   return (
     <main className="home-page" aria-label="Arbit home">
-      <header className="site-header">
-        <Link className="brand" to="/" aria-label="Arbit home">
-          <img src={logo} alt="Arbit" />
-        </Link>
-        <nav className="header-actions" aria-label="Primary">
-          <Link to="/exhibitions/search" aria-label="검색">
-            <SearchIcon />
-          </Link>
-          <Link to={accountPath} aria-label={accountLabel}>
-            <UserIcon />
-          </Link>
-        </nav>
-      </header>
+      <AppHeader variant="home" />
 
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-scene" aria-hidden="true">
@@ -91,7 +59,7 @@ function App() {
             <h2 id="recommend-title">당신의 추천</h2>
             <p>큐레이터가 엄선한 당신만을 위한 맞춤형 문화생활 리스트입니다.</p>
           </div>
-          <Link to="/exhibitions/search" className="view-all">
+          <Link to="/exhibitions/all" className="view-all">
             전체보기
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h13" />
@@ -131,15 +99,7 @@ function App() {
         </div>
       </section>
 
-      <footer className="site-footer">
-        <nav aria-label="Footer">
-          <a href="/">Privacy</a>
-          <a href="/">Terms</a>
-          <a href="/">Exhibition Guidelines</a>
-          <a href="/">Press</a>
-        </nav>
-        <p>© 2026 Arbit. All rights reserved.</p>
-      </footer>
+      <AppFooter />
     </main>
   )
 }

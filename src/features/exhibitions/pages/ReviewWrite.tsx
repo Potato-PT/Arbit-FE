@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useMemo, useState, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import logo from '../../../assets/logo.png'
+import AppHeader from '../../../components/AppHeader'
+import AppFooter from '../../../components/AppFooter'
 import { addExhibitionReview, getExhibitionDetail } from '../data/exhibitionDetails'
-import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import '../styles/ReviewWrite.css'
+
+type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
 
 const visitYears = ['2026', '2025', '2024', '2023', '2022']
 const visitMonths = Array.from({ length: 12 }, (_, index) => String(index + 1))
@@ -31,7 +32,7 @@ function ReviewWrite() {
   if (!exhibition || !id) {
     return (
       <main className="review-write-page">
-        <ReviewHeader />
+        <AppHeader />
         <section className="review-write-missing">
           <h1>전시를 찾을 수 없습니다</h1>
           <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
@@ -43,7 +44,7 @@ function ReviewWrite() {
   const exhibitionId = id
   const detailPath = `/exhibitions/${exhibitionId}`
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const handleSubmit: FormSubmitHandler = (event) => {
     event.preventDefault()
 
     if (!content.trim()) {
@@ -67,7 +68,7 @@ function ReviewWrite() {
 
   return (
     <main className="review-write-page" aria-label={`${exhibition.title} 후기 작성`}>
-      <ReviewHeader />
+      <AppHeader />
 
       <section className="review-write-shell" aria-labelledby="review-write-title">
         <div className="review-write-intro">
@@ -171,46 +172,8 @@ function ReviewWrite() {
           </div>
         </form>
       </section>
+      <AppFooter />
     </main>
-  )
-}
-
-function ReviewHeader() {
-  const { accountLabel, accountPath } = useAuthStatus()
-
-  return (
-    <header className="review-write-header">
-      <Link className="review-write-brand" to="/" aria-label="Arbit home">
-        <img src={logo} alt="Arbit" />
-      </Link>
-      <nav className="review-write-nav" aria-label="Primary">
-        <Link to="/exhibitions/search" aria-label="검색">
-          <SearchIcon />
-        </Link>
-        <Link to={accountPath} aria-label={accountLabel}>
-          <UserIcon />
-        </Link>
-      </nav>
-    </header>
-  )
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="10.6" cy="10.6" r="5.7" />
-      <path d="m15 15 4.2 4.2" />
-    </svg>
-  )
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8.3" r="3" />
-      <path d="M7.1 17.2c.85-2.45 2.48-3.68 4.9-3.68s4.05 1.23 4.9 3.68" />
-      <circle cx="12" cy="12" r="9" />
-    </svg>
   )
 }
 

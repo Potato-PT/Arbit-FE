@@ -1,0 +1,49 @@
+.app-footer {
+  width: 100%;
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  margin-top: 0;
+  background: #f4f4f5;
+  color: #8d8a87;
+  text-align: center;
+}
+
+.app-footer nav {
+  display: flex;
+  justify-content: center;
+  gap: clamp(28px, 5vw, 58px);
+  flex-wrap: wrap;
+}
+
+.app-footer a {
+  color: #9d9995;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.app-footer a:hover {
+  color: #6d5c45;
+}
+
+.app-footer p {
+  margin: 0;
+  color: #4f4a45;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .app-footer {
+    min-height: 156px;
+    gap: 22px;
+    padding: 28px 20px;
+  }
+
+  .app-footer nav {
+    gap: 14px 24px;
+  }
+}

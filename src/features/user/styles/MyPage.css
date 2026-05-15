@@ -8,44 +8,6 @@
   letter-spacing: 0;
 }
 
-.mypage-header {
-  height: 98px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 clamp(22px, 4vw, 40px);
-  border-bottom: 1px solid #f5f2ee;
-}
-
-.mypage-brand,
-.mypage-brand img {
-  display: block;
-}
-
-.mypage-brand img {
-  width: 149.299px;
-  height: auto;
-  object-fit: contain;
-}
-
-.mypage-actions {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-}
-
-.mypage-actions a {
-  width: 33.6px;
-  height: 33.6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px;
-  color: #5f5954;
-  text-decoration: none;
-}
-
-.mypage-actions svg,
 .avatar-edit svg,
 .favorite-heart svg,
 .favorite-meta svg,
@@ -612,37 +574,6 @@
   font-size: 15px;
 }
 
-.mypage-footer {
-  min-height: 170px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 30px;
-  background: #f4f4f5;
-  color: #8d8a87;
-  text-align: center;
-}
-
-.mypage-footer nav {
-  display: flex;
-  justify-content: center;
-  gap: clamp(28px, 5vw, 58px);
-  flex-wrap: wrap;
-}
-
-.mypage-footer a {
-  color: #9d9995;
-  font-size: 13px;
-  text-decoration: none;
-}
-
-.mypage-footer p {
-  margin: 0;
-  color: #4f4a45;
-  font-size: 13px;
-}
-
 @media (max-width: 960px) {
   .favorite-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -669,10 +600,6 @@
 }
 
 @media (max-width: 640px) {
-  .mypage-header {
-    height: 76px;
-  }
-
   .profile-section {
     align-items: flex-start;
     padding: 34px 22px 42px;

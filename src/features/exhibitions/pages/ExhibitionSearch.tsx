@@ -1,18 +1,17 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useMemo, useState } from 'react'
-import logo from '../../../assets/logo.png'
+import AppHeader from '../../../components/AppHeader'
+import AppFooter from '../../../components/AppFooter'
 import { genreFilters, searchExhibitions, seoulDistricts } from '../data/searchMock'
-import { useAuthStatus } from '../../../hooks/useAuthStatus'
-import '../styles/ArtSearch.css'
+import '../styles/ExhibitionSearch.css'
 
 type SortOption = '거리순' | '낮은 가격순'
 
 const periodFilters = ['진행중', '예정'] as const
 const priceFilters = ['무료', '유료'] as const
 
-function ArtSearch() {
-  const { accountLabel, accountPath } = useAuthStatus()
+function ExhibitionSearch() {
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(['마포구'])
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['사진/영상'])
   const [selectedPeriods, setSelectedPeriods] = useState<string[]>(['진행중'])
@@ -95,19 +94,7 @@ function ArtSearch() {
 
   return (
     <main className="search-page" aria-label="전시 검색">
-      <header className="search-header">
-        <Link className="search-brand" to="/" aria-label="Arbit home">
-          <img src={logo} alt="Arbit" />
-        </Link>
-        <nav className="search-header-actions" aria-label="Primary">
-          <button type="button" aria-label="검색">
-            <SearchIcon />
-          </button>
-          <Link to={accountPath} aria-label={accountLabel}>
-            <UserIcon />
-          </Link>
-        </nav>
-      </header>
+      <AppHeader />
 
       <div className="search-shell">
         <aside className="filter-panel" aria-label="전시 필터">
@@ -250,6 +237,7 @@ function ArtSearch() {
           </button>
         </section>
       </div>
+      <AppFooter />
     </main>
   )
 }
@@ -299,16 +287,6 @@ function SearchIcon() {
   )
 }
 
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8.3" r="3" />
-      <path d="M7.1 17.2c.85-2.45 2.48-3.68 4.9-3.68s4.05 1.23 4.9 3.68" />
-      <circle cx="12" cy="12" r="9" />
-    </svg>
-  )
-}
-
 function PinIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -342,4 +320,4 @@ function HeartIcon({ filled = false }: { filled?: boolean }) {
   )
 }
 
-export default ArtSearch
+export default ExhibitionSearch
