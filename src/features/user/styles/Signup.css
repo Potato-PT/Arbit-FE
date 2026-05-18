@@ -200,6 +200,14 @@ body:has(.signup-page) #root {
   transform: none;
 }
 
+.signup-error {
+  margin: -4px 0 16px;
+  color: #b4493b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
 @keyframes signup-fade-in {
   from {
     opacity: 0;

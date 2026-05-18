@@ -2,6 +2,8 @@ import { useMemo, useState, type ComponentProps } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
+import { useAuthStatus } from '../../../hooks/useAuthStatus'
+import { ApiError, signup, type Gender } from '../api/authApi'
 import '../styles/Signup.css'
 
 type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
@@ -10,9 +12,13 @@ const minPasswordLength = 8
 
 function Signup() {
   const navigate = useNavigate()
+  const { setAuthTokens } = useAuthStatus()
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [birthYear, setBirthYear] = useState('')
+  const [gender, setGender] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear()
     return Array.from({ length: currentYear - 1940 - 9 }, (_, index) => currentYear - 10 - index)
@@ -26,14 +32,45 @@ function Signup() {
     hasPasswordConfirmation && isPasswordLongEnough && !doPasswordsMatch
   const isPasswordValid = hasPassword && isPasswordLongEnough && doPasswordsMatch
 
-  const handleSubmit: FormSubmitHandler = (event) => {
+  const handleSubmit: FormSubmitHandler = async (event) => {
     event.preventDefault()
 
     if (!isPasswordValid) {
       return
     }
 
-    navigate('/user/preferences')
+    const formData = new FormData(event.currentTarget)
+    const username = String(formData.get('username') ?? '')
+    const nickname = String(formData.get('nickname') ?? '')
+    const gender = String(formData.get('gender') ?? '') as Gender
+    const residentialArea = String(formData.get('residentialArea') ?? '')
+
+    setErrorMessage('')
+    setIsSubmitting(true)
+
+    try {
+      const tokens = await signup({
+        username,
+        password,
+        nickname,
+        birthYear: Number(birthYear),
+        gender,
+        residentialArea,
+      })
+
+      setAuthTokens(tokens)
+      navigate('/')
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 400) {
+        setErrorMessage('입력값을 다시 확인해주세요.')
+      } else if (error instanceof ApiError && error.status === 409) {
+        setErrorMessage('이미 사용 중인 아이디입니다.')
+      } else {
+        setErrorMessage('회원가입 중 오류가 발생했습니다.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -58,6 +95,7 @@ function Signup() {
               <span>아이디</span>
               <input
                 type="text"
+                name="username"
                 placeholder="영문·숫자 조합 6자 이상"
                 autoComplete="username"
                 maxLength={20}
@@ -73,6 +111,7 @@ function Signup() {
               <span>비밀번호</span>
               <input
                 type="password"
+                name="password"
                 placeholder="영문·숫자·특수문자 8자 이상"
                 autoComplete="new-password"
                 value={password}
@@ -120,12 +159,19 @@ function Signup() {
 
             <label className="signup-field">
               <span>이름</span>
-              <input type="text" placeholder="홍길동" autoComplete="name" required />
+              <input
+                type="text"
+                name="nickname"
+                placeholder="홍길동"
+                autoComplete="name"
+                required
+              />
             </label>
 
             <label className="signup-field">
               <span>출생년도</span>
               <select
+                name="birthYear"
                 className={birthYear ? '' : 'is-placeholder'}
                 value={birthYear}
                 onChange={(event) => setBirthYear(event.target.value)}
@@ -143,9 +189,27 @@ function Signup() {
             </label>
 
             <label className="signup-field">
+              <span>성별</span>
+              <select
+                name="gender"
+                className={gender ? '' : 'is-placeholder'}
+                value={gender}
+                onChange={(event) => setGender(event.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  선택
+                </option>
+                <option value="MALE">남성</option>
+                <option value="FEMALE">여성</option>
+              </select>
+            </label>
+
+            <label className="signup-field">
               <span>거주지역</span>
               <input
                 type="text"
+                name="residentialArea"
                 placeholder="서울특별시 강남구 테헤란로 123"
                 autoComplete="street-address"
                 required
@@ -153,8 +217,18 @@ function Signup() {
               <em>도로명 주소 또는 지역명을 입력해주세요</em>
             </label>
 
-            <button className="signup-submit" type="submit" disabled={!isPasswordValid}>
-              계속하기
+            {errorMessage && (
+              <p className="signup-error" role="alert">
+                {errorMessage}
+              </p>
+            )}
+
+            <button
+              className="signup-submit"
+              type="submit"
+              disabled={!isPasswordValid || isSubmitting}
+            >
+              {isSubmitting ? '처리 중' : '계속하기'}
             </button>
           </form>
         </div>

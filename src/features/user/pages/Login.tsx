@@ -1,21 +1,43 @@
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import '../styles/Login.css'
 import artGallery from '../../../assets/artgallery.png'
 import logo from '../../../assets/logo.png'
 import AppFooter from '../../../components/AppFooter'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
+import { ApiError, login as loginUser } from '../api/authApi'
 
 type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
 
 function Login() {
   const navigate = useNavigate()
-  const { setIsLoggedIn } = useAuthStatus()
+  const { setAuthTokens } = useAuthStatus()
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit: FormSubmitHandler = (event) => {
+  const handleSubmit: FormSubmitHandler = async (event) => {
     event.preventDefault()
-    setIsLoggedIn(true)
-    navigate('/user/mypage')
+
+    const formData = new FormData(event.currentTarget)
+    const username = String(formData.get('username') ?? '')
+    const password = String(formData.get('password') ?? '')
+
+    setErrorMessage('')
+    setIsSubmitting(true)
+
+    try {
+      const tokens = await loginUser({ username, password })
+      setAuthTokens(tokens)
+      navigate('/')
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError && error.status === 401
+          ? '아이디 또는 비밀번호가 올바르지 않습니다.'
+          : '로그인 중 오류가 발생했습니다.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -31,7 +53,13 @@ function Login() {
               <span className="login-label">아이디</span>
               <span className="login-control">
                 <UserIcon />
-                <input type="text" placeholder="아이디를 입력해주세요" autoComplete="username" />
+                <input
+                  type="text"
+                  name="username"
+                  placeholder="아이디를 입력해주세요"
+                  autoComplete="username"
+                  required
+                />
               </span>
             </label>
 
@@ -41,8 +69,10 @@ function Login() {
                 <LockIcon />
                 <input
                   type="password"
+                  name="password"
                   placeholder="••••••••"
                   autoComplete="current-password"
+                  required
                 />
               </span>
             </label>
@@ -57,8 +87,14 @@ function Login() {
               </button>
             </div>
 
-            <button className="login-submit" type="submit">
-              <span>로그인하기</span>
+            {errorMessage && (
+              <p className="login-error" role="alert">
+                {errorMessage}
+              </p>
+            )}
+
+            <button className="login-submit" type="submit" disabled={isSubmitting}>
+              <span>{isSubmitting ? '로그인 중' : '로그인하기'}</span>
               <ChevronRightIcon />
             </button>
           </form>

@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
+import type { AuthTokenResponse } from '../features/user/api/authApi'
 
 const AUTH_STORAGE_KEY = 'arbit.isLoggedIn'
+const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
+const REFRESH_TOKEN_STORAGE_KEY = 'refreshToken'
 
 function readLoginStatus() {
   if (typeof window === 'undefined') {
     return false
   }
 
-  return window.localStorage.getItem(AUTH_STORAGE_KEY) === 'true'
+  return (
+    window.localStorage.getItem(AUTH_STORAGE_KEY) === 'true' ||
+    Boolean(window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY))
+  )
 }
 
 export function useAuthStatus() {
@@ -33,10 +39,17 @@ export function useAuthStatus() {
     setIsLoggedInState(nextIsLoggedIn)
   }
 
+  const setAuthTokens = ({ accessToken, refreshToken }: AuthTokenResponse) => {
+    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken)
+    window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
+    setIsLoggedIn(true)
+  }
+
   return {
     isLoggedIn,
     accountPath: isLoggedIn ? '/user/mypage' : '/user/login',
     accountLabel: isLoggedIn ? '마이페이지' : '로그인',
     setIsLoggedIn,
+    setAuthTokens,
   }
 }
