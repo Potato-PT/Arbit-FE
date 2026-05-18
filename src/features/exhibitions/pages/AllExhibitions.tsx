@@ -259,10 +259,11 @@ function AllExhibitions() {
                       </p>
                       <h3>{item.title}</h3>
                       <div className="all-card-foot">
-                        <span className="all-category-chip">{item.category}</span>
-                        <span className="all-card-submeta">
-                          {item.priceType} · {item.distanceKm.toFixed(1)}km
-                        </span>
+                        <div className="all-card-tags">
+                          <span className="all-category-chip">{item.category}</span>
+                          <span className="all-price-chip">{item.priceType}</span>
+                        </div>
+                        <span className="all-card-distance">{item.distanceKm.toFixed(1)}km</span>
                       </div>
                     </div>
                   </Link>

@@ -4,7 +4,7 @@ export const allExhibitionsMock: AllExhibitionsPageData = {
   genreFilters: [
     '전체',
     '전시/미술',
-    '클래식 및 독주/독창회',
+    '클래식',
     '교육/체험',
     '설치 예술',
     '축제',
@@ -53,7 +53,7 @@ export const allExhibitionsMock: AllExhibitionsPageData = {
     {
       id: 'rhythm-of-silence',
       title: '무한의 현',
-      category: '클래식 및 독주/독창회',
+      category: '클래식',
       venue: '퐁피두 센터',
       location: '파리',
       district: '서초구',

@@ -261,7 +261,7 @@
 
 .all-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
 }
 
@@ -453,8 +453,8 @@
 .all-card-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  gap: 9px;
+  padding: 18px;
 }
 
 .all-meta {
@@ -481,7 +481,8 @@
 }
 
 .all-card h3 {
-  margin: 3px 0 1px;
+  min-height: 45px;
+  margin: 4px 0 2px;
   color: #24211f;
   font-size: 17px;
   font-weight: 800;
@@ -495,34 +496,57 @@
 
 .all-card-foot {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 7px;
+  gap: 12px;
+  margin-top: 8px;
+  min-width: 0;
 }
 
-.all-category-chip {
-  max-width: min(100%, 132px);
+.all-card-tags {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+}
+
+.all-category-chip,
+.all-price-chip {
   min-height: 24px;
   display: inline-flex;
   align-items: center;
   border: 1px solid #eee6dc;
   border-radius: 999px;
-  background: #f8f5ef;
-  color: #756553;
   padding: 4px 10px;
   font-size: 10.5px;
   font-weight: 800;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  line-height: 1.35;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
-.all-card-submeta {
+.all-category-chip {
+  min-width: 0;
+  max-width: 100%;
+  background: #f8f5ef;
+  color: #756553;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.all-price-chip {
+  flex: 0 0 auto;
+  background: #ffffff;
+  color: #8a7460;
+}
+
+.all-card-distance {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   color: #9a948c;
   font-size: 11px;
   font-weight: 700;

@@ -36,7 +36,7 @@ export const preferenceMediaCategories: PreferenceMediaCategory[] = [
   },
   {
     id: 'classic-recital',
-    label: '클래식 및 독주/독창회',
+    label: '클래식',
     icon: 'classic',
     details: [
       { id: 'orchestra-symphony', label: '관현악/교향곡' },

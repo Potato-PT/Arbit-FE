@@ -6,20 +6,6 @@ import '../styles/Signup.css'
 
 type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
 
-const jobOptions = [
-  { value: 'DEVELOPER', label: '개발자' },
-  { value: 'DESIGNER', label: '디자이너' },
-  { value: 'MARKETER', label: '마케터' },
-  { value: 'PLANNER', label: '기획자' },
-  { value: 'PHOTOGRAPHER', label: '사진/영상' },
-  { value: 'WRITER', label: '작가/카피라이터' },
-  { value: 'ILLUSTRATOR', label: '일러스트레이터' },
-  { value: 'TRANSLATOR', label: '번역가' },
-  { value: 'CONSULTANT', label: '컨설턴트' },
-  { value: 'EDUCATOR', label: '강사/튜터' },
-  { value: 'OTHER', label: '기타' },
-]
-
 const minPasswordLength = 8
 
 function Signup() {
@@ -27,7 +13,6 @@ function Signup() {
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [birthYear, setBirthYear] = useState('')
-  const [job, setJob] = useState('')
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear()
     return Array.from({ length: currentYear - 1940 - 9 }, (_, index) => currentYear - 10 - index)
@@ -138,45 +123,24 @@ function Signup() {
               <input type="text" placeholder="홍길동" autoComplete="name" required />
             </label>
 
-            <div className="signup-row">
-              <label className="signup-field">
-                <span>출생년도</span>
-                <select
-                  className={birthYear ? '' : 'is-placeholder'}
-                  value={birthYear}
-                  onChange={(event) => setBirthYear(event.target.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    선택
+            <label className="signup-field">
+              <span>출생년도</span>
+              <select
+                className={birthYear ? '' : 'is-placeholder'}
+                value={birthYear}
+                onChange={(event) => setBirthYear(event.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  선택
+                </option>
+                {yearOptions.map((year) => (
+                  <option value={year} key={year}>
+                    {year}년
                   </option>
-                  {yearOptions.map((year) => (
-                    <option value={year} key={year}>
-                      {year}년
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="signup-field">
-                <span>직업</span>
-                <select
-                  className={job ? '' : 'is-placeholder'}
-                  value={job}
-                  onChange={(event) => setJob(event.target.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    선택
-                  </option>
-                  {jobOptions.map((option) => (
-                    <option value={option.value} key={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+                ))}
+              </select>
+            </label>
 
             <label className="signup-field">
               <span>거주지역</span>
