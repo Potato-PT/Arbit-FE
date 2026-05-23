@@ -9,6 +9,7 @@
 }
 
 .avatar-edit svg,
+.nickname-edit svg,
 .favorite-heart svg,
 .favorite-meta svg,
 .review-actions svg {
@@ -41,6 +42,19 @@
     radial-gradient(circle at 50% 33%, #e6bf9c 0 12%, transparent 13%),
     linear-gradient(150deg, #d9cfc2, #9b8d7d);
   box-shadow: 0 12px 22px rgba(62, 48, 34, 0.12);
+}
+
+.profile-avatar-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.profile-image-input {
+  display: none;
 }
 
 .avatar-face {
@@ -88,12 +102,44 @@
   box-shadow: 0 8px 14px rgba(68, 54, 39, 0.2);
 }
 
+.avatar-edit:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
 .profile-section h1 {
-  margin: 0 0 7px;
+  margin: 0;
   color: #171717;
   font-size: clamp(38px, 4.2vw, 46px);
   font-weight: 800;
   line-height: 1.05;
+}
+
+.nickname-edit {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 7px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1eee8;
+  color: #7c6c59;
+  cursor: pointer;
+}
+
+.nickname-edit:disabled {
+  cursor: default;
+  opacity: 0.62;
 }
 
 .profile-section p {
@@ -101,6 +147,76 @@
   color: #85807a;
   font-size: 16px;
   font-weight: 700;
+}
+
+.profile-section .profile-error {
+  margin-top: 8px;
+  color: #b3483b;
+}
+
+.nickname-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+
+.nickname-field {
+  display: grid;
+  gap: 6px;
+}
+
+.nickname-field span {
+  color: #85807a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nickname-field input {
+  width: min(280px, 58vw);
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #ded8cf;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #171717;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.nickname-field input:focus {
+  outline: 2px solid rgba(124, 108, 89, 0.24);
+  outline-offset: 2px;
+}
+
+.nickname-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.nickname-actions button {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #dec4a4;
+  color: #5c5044;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.nickname-actions button + button {
+  background: #f1f1f2;
+  color: #6d6761;
+}
+
+.nickname-actions button:disabled,
+.nickname-field input:disabled {
+  cursor: default;
+  opacity: 0.65;
 }
 
 .mypage-content {
@@ -164,6 +280,13 @@
   font-weight: 700;
 }
 
+.preference-empty {
+  margin: 0;
+  color: #9a948e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .favorite-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -188,7 +311,14 @@
   overflow: hidden;
   border-radius: 24px;
   margin-bottom: 22px;
+  background: linear-gradient(145deg, #1c3c3c, #385d59);
   box-shadow: 0 12px 28px rgba(33, 30, 26, 0.07);
+}
+
+.favorite-poster-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .favorite-dday {
@@ -262,6 +392,10 @@
   margin: 0 0 14px;
   color: #4b4641;
   font-size: 16px;
+}
+
+.favorite-empty.is-error p {
+  color: #b3483b;
 }
 
 .favorite-empty a {
@@ -378,6 +512,23 @@
   gap: 30px;
 }
 
+.review-status {
+  max-width: 940px;
+  margin-bottom: 24px;
+  padding: 28px;
+  border: 1px solid #ece5dc;
+  border-radius: 24px;
+  background: #fbfaf8;
+  color: #8a8077;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.review-status.is-error {
+  color: #b3483b;
+}
+
 .my-review-card {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
@@ -400,6 +551,26 @@
   overflow: hidden;
   border-radius: 28px;
   box-shadow: inset 0 -18px 28px rgba(17, 17, 17, 0.16);
+}
+
+.review-poster-image {
+  width: 100%;
+  height: 100%;
+  min-height: 208px;
+  object-fit: cover;
+}
+
+.review-poster-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 118px;
+  min-height: 156px;
+  padding: 18px;
+  background: linear-gradient(180deg, #80b8ad, #4d8d86);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .review-poster-mint {

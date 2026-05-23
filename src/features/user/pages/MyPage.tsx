@@ -1,17 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
+import { type MyPageTab } from '../data/myPageMock'
 import {
-  favoriteExhibitions,
-  myReviews,
-  preferenceTags,
-  profile,
-  type FavoriteExhibition,
-  type MyPageTab,
-  type MyReview,
-} from '../data/myPageMock'
-import { useFavoriteExhibitions } from '../../../hooks/useFavoriteExhibitions'
+  getMyBookmarks,
+  getMyProfile,
+  getMyReviews,
+  updateNickname,
+  updateProfileImage,
+} from '../api/myPageApi'
+import { ApiError } from '../api/authApi'
+import type {
+  MyBookmark,
+  MyProfile,
+  MyReview as ApiMyReview,
+} from '../types/myPageApi'
 import '../styles/MyPage.css'
 
 const tabs: { id: MyPageTab; label: string }[] = [
@@ -22,22 +26,221 @@ const tabs: { id: MyPageTab; label: string }[] = [
 
 function MyPage() {
   const [activeTab, setActiveTab] = useState<MyPageTab>('favorites')
-  const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
+  const [profile, setProfile] = useState<MyProfile | null>(null)
+  const [isProfileLoading, setIsProfileLoading] = useState(true)
+  const [profileError, setProfileError] = useState('')
+  const [isEditingNickname, setIsEditingNickname] = useState(false)
+  const [nicknameInput, setNicknameInput] = useState('')
+  const [nicknameError, setNicknameError] = useState('')
+  const [isNicknameSaving, setIsNicknameSaving] = useState(false)
+  const [profileImageError, setProfileImageError] = useState('')
+  const [isProfileImageSaving, setIsProfileImageSaving] = useState(false)
+  const profileImageInputRef = useRef<HTMLInputElement>(null)
+  const tasteKeywords = profile?.tasteKeywords ?? []
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadProfile() {
+      setIsProfileLoading(true)
+      setProfileError('')
+
+      try {
+        const nextProfile = await getMyProfile()
+
+        if (isMounted) {
+          setProfile(nextProfile)
+          setNicknameInput(nextProfile.nickname)
+        }
+      } catch (error) {
+        if (isMounted && !(error instanceof ApiError && error.status === 401)) {
+          setProfileError('프로필 정보를 불러오지 못했습니다.')
+        }
+      } finally {
+        if (isMounted) {
+          setIsProfileLoading(false)
+        }
+      }
+    }
+
+    loadProfile()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleStartNicknameEdit = () => {
+    setNicknameInput(profile?.nickname ?? '')
+    setNicknameError('')
+    setIsEditingNickname(true)
+  }
+
+  const handleCancelNicknameEdit = () => {
+    setNicknameInput(profile?.nickname ?? '')
+    setNicknameError('')
+    setIsEditingNickname(false)
+  }
+
+  const handleNicknameSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const nextNickname = nicknameInput.trim()
+
+    if (!nextNickname) {
+      setNicknameError('닉네임을 다시 확인해주세요.')
+      return
+    }
+
+    setNicknameError('')
+    setIsNicknameSaving(true)
+
+    try {
+      const nextProfile = await updateNickname(nextNickname)
+      setProfile(nextProfile)
+      setNicknameInput(nextProfile.nickname)
+      setIsEditingNickname(false)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        return
+      }
+
+      setNicknameError(
+        error instanceof ApiError && error.status === 400
+          ? '닉네임을 다시 확인해주세요.'
+          : '닉네임 변경 중 오류가 발생했습니다.',
+      )
+    } finally {
+      setIsNicknameSaving(false)
+    }
+  }
+
+  const handleProfileImageButtonClick = () => {
+    setProfileImageError('')
+    profileImageInputRef.current?.click()
+  }
+
+  const handleProfileImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setProfileImageError('이미지 파일만 업로드할 수 있습니다.')
+      return
+    }
+
+    setProfileImageError('')
+    setIsProfileImageSaving(true)
+
+    try {
+      const nextProfile = await updateProfileImage(file)
+      setProfile(nextProfile)
+      setNicknameInput(nextProfile.nickname)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        return
+      }
+
+      setProfileImageError('프로필 이미지 변경 중 오류가 발생했습니다.')
+    } finally {
+      setIsProfileImageSaving(false)
+    }
+  }
 
   return (
     <main className="mypage" aria-label="마이페이지">
       <AppHeader />
 
       <section className="profile-section" aria-labelledby="profile-name">
-        <div className="profile-avatar" role="img" aria-label={profile.avatarAlt}>
-          <span className="avatar-face" />
-          <button className="avatar-edit" type="button" aria-label="프로필 수정">
+        <div
+          className="profile-avatar"
+          role="img"
+          aria-label={profile ? `${profile.nickname} 프로필 사진` : '프로필 사진'}
+        >
+          {profile?.profileImageUrl ? (
+            <img className="profile-avatar-image" src={profile.profileImageUrl} alt="" />
+          ) : (
+            <span className="avatar-face" />
+          )}
+          <button
+            className="avatar-edit"
+            type="button"
+            aria-label="프로필 이미지 수정"
+            onClick={handleProfileImageButtonClick}
+            disabled={isProfileLoading || isProfileImageSaving}
+          >
             <PencilIcon />
           </button>
+          <input
+            ref={profileImageInputRef}
+            className="profile-image-input"
+            type="file"
+            accept="image/*"
+            onChange={handleProfileImageChange}
+            tabIndex={-1}
+          />
         </div>
         <div>
-          <h1 id="profile-name">{profile.name}</h1>
-          <p>가입일: {profile.joinedAt}</p>
+          {isEditingNickname ? (
+            <form className="nickname-form" onSubmit={handleNicknameSubmit}>
+              <label className="nickname-field" htmlFor="mypage-nickname">
+                <span>닉네임</span>
+                <input
+                  id="mypage-nickname"
+                  type="text"
+                  value={nicknameInput}
+                  onChange={(event) => setNicknameInput(event.target.value)}
+                  disabled={isNicknameSaving}
+                  required
+                />
+              </label>
+              <div className="nickname-actions">
+                <button type="submit" disabled={isNicknameSaving}>
+                  {isNicknameSaving ? '저장 중' : '저장'}
+                </button>
+                <button type="button" onClick={handleCancelNicknameEdit} disabled={isNicknameSaving}>
+                  취소
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="profile-name-row">
+              <h1 id="profile-name">{profile?.nickname ?? '마이페이지'}</h1>
+              <button
+                className="nickname-edit"
+                type="button"
+                aria-label="닉네임 수정"
+                onClick={handleStartNicknameEdit}
+                disabled={isProfileLoading || isNicknameSaving}
+              >
+                <PencilIcon />
+              </button>
+            </div>
+          )}
+          {isProfileLoading ? (
+            <p role="status">프로필 정보를 불러오는 중입니다.</p>
+          ) : profileError ? (
+            <p className="profile-error" role="alert">
+              {profileError}
+            </p>
+          ) : (
+            <p>가입일: {formatDisplayDate(profile?.subscribedAt)}</p>
+          )}
+          {nicknameError && (
+            <p className="profile-error" role="alert">
+              {nicknameError}
+            </p>
+          )}
+          {isProfileImageSaving && <p role="status">프로필 이미지를 변경하는 중입니다.</p>}
+          {profileImageError && (
+            <p className="profile-error" role="alert">
+              {profileImageError}
+            </p>
+          )}
         </div>
       </section>
 
@@ -64,9 +267,9 @@ function MyPage() {
         </div>
 
         {activeTab === 'favorites' && (
-          <FavoritesPanel favoriteIdSet={favoriteIdSet} onToggleFavorite={toggleFavorite} />
+          <FavoritesPanel tasteKeywords={tasteKeywords} />
         )}
-        {activeTab === 'reviews' && <ReviewsPanel />}
+        {activeTab === 'reviews' && <ReviewsPanel tasteKeywords={tasteKeywords} />}
         {activeTab === 'preferences' && (
           <div className="mypage-empty" role="tabpanel">
             <p>취향 설정 화면은 기존 구조를 유지합니다.</p>
@@ -79,42 +282,120 @@ function MyPage() {
   )
 }
 
-function ReviewsPanel() {
+function formatDisplayDate(dateText?: string) {
+  if (!dateText) {
+    return '-'
+  }
+
+  const date = new Date(dateText)
+
+  if (Number.isNaN(date.getTime())) {
+    return dateText
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date)
+}
+
+function PreferenceTags({ tasteKeywords }: { tasteKeywords: string[] }) {
+  if (tasteKeywords.length === 0) {
+    return <p className="preference-empty">설정된 취향 키워드가 없습니다.</p>
+  }
+
+  return (
+    <div className="preference-tags">
+      {tasteKeywords.map((tag) => (
+        <span key={tag}>#{tag}</span>
+      ))}
+    </div>
+  )
+}
+
+function ReviewsPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
+  const [reviews, setReviews] = useState<ApiMyReview[]>([])
+  const [isReviewsLoading, setIsReviewsLoading] = useState(true)
+  const [reviewsError, setReviewsError] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadReviews() {
+      setIsReviewsLoading(true)
+      setReviewsError('')
+
+      try {
+        const nextReviews = await getMyReviews()
+
+        if (isMounted) {
+          setReviews(nextReviews)
+        }
+      } catch (error) {
+        if (isMounted && !(error instanceof ApiError && error.status === 401)) {
+          setReviewsError('리뷰 목록을 불러오지 못했습니다.')
+        }
+      } finally {
+        if (isMounted) {
+          setIsReviewsLoading(false)
+        }
+      }
+    }
+
+    loadReviews()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   return (
     <div className="reviews-panel" role="tabpanel" aria-label="나의 후기">
       <section className="preference-block" aria-labelledby="review-preference-title">
         <h2 id="review-preference-title">나의 취향</h2>
-        <div className="preference-tags">
-          {preferenceTags.map((tag) => (
-            <span key={tag}>#{tag}</span>
-          ))}
-        </div>
+        <PreferenceTags tasteKeywords={tasteKeywords} />
       </section>
 
+      {isReviewsLoading && (
+        <div className="review-status" role="status">
+          리뷰 목록을 불러오는 중입니다.
+        </div>
+      )}
+
+      {reviewsError && (
+        <div className="review-status is-error" role="alert">
+          {reviewsError}
+        </div>
+      )}
+
+      {!isReviewsLoading && !reviewsError && reviews.length === 0 && (
+        <div className="review-status">작성한 리뷰가 없습니다.</div>
+      )}
+
       <div className="review-list">
-        {myReviews.map((review) => (
-          <article className="my-review-card" key={review.id}>
-            <div className={`review-poster review-poster-${review.posterTone}`} aria-hidden="true">
-              <span className="review-poster-sheet">
-                <span className="review-poster-title">{getPosterTitle(review.posterTone)}</span>
-                <span className="review-poster-subtitle">EXHIBITION</span>
-                <span className="review-poster-lines" />
-              </span>
+        {reviews.map((review) => (
+          <article className="my-review-card" key={review.reviewId}>
+            <div className="review-poster" aria-hidden="true">
+              {review.posterImageUrl ? (
+                <img className="review-poster-image" src={review.posterImageUrl} alt="" />
+              ) : (
+                <span className="review-poster-placeholder">EXHIBITION</span>
+              )}
             </div>
 
             <div className="review-card-body">
               <div className="review-card-head">
                 <div>
                   <h3>{review.title}</h3>
-                  <StarRating rating={review.rating} />
+                  <StarRating rating={review.starScore} />
                 </div>
-                {review.isPublic && <span className="review-public-badge">PUBLIC</span>}
               </div>
 
               <p className="review-copy">{review.content}</p>
 
               <div className="review-card-foot">
-                <span>{review.visitedAt}</span>
+                <span>{formatDisplayDate(review.createdAt)}</span>
                 <div className="review-actions">
                   <span>
                     <ThumbIcon />
@@ -133,55 +414,81 @@ function ReviewsPanel() {
   )
 }
 
-function getPosterTitle(tone: MyReview['posterTone']) {
-  if (tone === 'mint') {
-    return 'JOURNEY'
-  }
-
-  if (tone === 'mono') {
-    return 'POSTER'
-  }
-
-  return 'LIGHT'
-}
-
 function StarRating({ rating }: { rating: number }) {
+  const normalizedRating = Math.max(0, Math.min(5, Math.round(rating)))
+
   return (
     <div className="my-review-rating" aria-label={`별점 ${rating}점`}>
-      {'★'.repeat(rating)}
-      {'☆'.repeat(5 - rating)}
+      {'★'.repeat(normalizedRating)}
+      {'☆'.repeat(5 - normalizedRating)}
     </div>
   )
 }
 
-interface FavoritesPanelProps {
-  favoriteIdSet: Set<string>
-  onToggleFavorite: (id: string) => void
-}
+function FavoritesPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
+  const [bookmarks, setBookmarks] = useState<MyBookmark[]>([])
+  const [isBookmarksLoading, setIsBookmarksLoading] = useState(true)
+  const [bookmarksError, setBookmarksError] = useState('')
 
-function FavoritesPanel({ favoriteIdSet, onToggleFavorite }: FavoritesPanelProps) {
-  const visibleFavoriteExhibitions = favoriteExhibitions.filter((item) => favoriteIdSet.has(item.id))
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadBookmarks() {
+      setIsBookmarksLoading(true)
+      setBookmarksError('')
+
+      try {
+        const nextBookmarks = await getMyBookmarks()
+
+        if (isMounted) {
+          setBookmarks(nextBookmarks)
+        }
+      } catch (error) {
+        if (isMounted && !(error instanceof ApiError && error.status === 401)) {
+          setBookmarksError('북마크 목록을 불러오지 못했습니다.')
+        }
+      } finally {
+        if (isMounted) {
+          setIsBookmarksLoading(false)
+        }
+      }
+    }
+
+    loadBookmarks()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   return (
     <div className="favorites-panel" role="tabpanel">
       <section className="preference-block" aria-labelledby="preference-title">
         <h2 id="preference-title">나의 취향</h2>
-        <div className="preference-tags">
-          {preferenceTags.map((tag) => (
-            <span key={tag}>#{tag}</span>
-          ))}
-        </div>
+        <PreferenceTags tasteKeywords={tasteKeywords} />
       </section>
 
+      {isBookmarksLoading && (
+        <div className="favorite-empty" role="status">
+          <p>북마크 목록을 불러오는 중입니다.</p>
+        </div>
+      )}
+
+      {bookmarksError && (
+        <div className="favorite-empty is-error" role="alert">
+          <p>{bookmarksError}</p>
+        </div>
+      )}
+
       <div className="favorite-grid">
-        {visibleFavoriteExhibitions.map((item) => (
-          <FavoriteCard item={item} key={item.id} onToggleFavorite={onToggleFavorite} />
+        {bookmarks.map((item) => (
+          <FavoriteCard item={item} key={item.eventId} />
         ))}
       </div>
 
-      {visibleFavoriteExhibitions.length === 0 && (
+      {!isBookmarksLoading && !bookmarksError && bookmarks.length === 0 && (
         <div className="favorite-empty" role="status">
-          <p>즐겨찾기한 전시가 없습니다.</p>
+          <p>북마크한 행사가 없습니다.</p>
           <Link to="/exhibitions/search">전시 검색으로 이동</Link>
         </div>
       )}
@@ -189,42 +496,43 @@ function FavoritesPanel({ favoriteIdSet, onToggleFavorite }: FavoritesPanelProps
   )
 }
 
-function FavoriteCard({
-  item,
-  onToggleFavorite,
-}: {
-  item: FavoriteExhibition
-  onToggleFavorite: (id: string) => void
-}) {
+function FavoriteCard({ item }: { item: MyBookmark }) {
   return (
     <article className="favorite-card">
-      <Link className="favorite-card-link" to={`/exhibitions/${item.id}`}>
-        <div className={`favorite-poster favorite-poster-${item.artwork}`}>
-          <span className="favorite-dday">{item.dday}</span>
-          <span className="favorite-art" />
+      <Link className="favorite-card-link" to={`/exhibitions/${item.eventId}`}>
+        <div className="favorite-poster">
+          {item.posterImageUrl ? (
+            <img className="favorite-poster-image" src={item.posterImageUrl} alt="" />
+          ) : (
+            <span className="favorite-art" />
+          )}
         </div>
         <span className="favorite-category">{item.category}</span>
         <h3>{item.title}</h3>
         <p className="favorite-meta">
           <CalendarIcon />
-          {item.period}
+          {formatDateRange(item.startDate, item.endDate)}
         </p>
         <p className="favorite-meta">
           <PinIcon />
           {item.venue}
         </p>
+        <p className="favorite-meta">북마크: {formatDisplayDate(item.bookmarkedAt)}</p>
       </Link>
       <button
-        aria-label={`${item.title} 즐겨찾기 해제`}
+        aria-label={`${item.title} 북마크됨`}
         aria-pressed={true}
         className="favorite-heart"
-        onClick={() => onToggleFavorite(item.id)}
         type="button"
       >
         <HeartIcon filled />
       </button>
     </article>
   )
+}
+
+function formatDateRange(startDate: string, endDate: string) {
+  return `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`
 }
 
 function PencilIcon() {

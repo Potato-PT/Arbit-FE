@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { AuthTokenResponse } from '../features/user/api/authApi'
-
-const AUTH_STORAGE_KEY = 'arbit.isLoggedIn'
-const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
-const REFRESH_TOKEN_STORAGE_KEY = 'refreshToken'
+import { hasStoredLoginStatus, saveAuthTokens, saveLoginStatus } from '../api/authStorage'
 
 function readLoginStatus() {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  return (
-    window.localStorage.getItem(AUTH_STORAGE_KEY) === 'true' ||
-    Boolean(window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY))
-  )
+  return hasStoredLoginStatus()
 }
 
 export function useAuthStatus() {
@@ -34,14 +24,13 @@ export function useAuthStatus() {
   }, [])
 
   const setIsLoggedIn = (nextIsLoggedIn: boolean) => {
-    window.localStorage.setItem(AUTH_STORAGE_KEY, String(nextIsLoggedIn))
+    saveLoginStatus(nextIsLoggedIn)
     window.dispatchEvent(new Event('arbit-auth-change'))
     setIsLoggedInState(nextIsLoggedIn)
   }
 
-  const setAuthTokens = ({ accessToken, refreshToken }: AuthTokenResponse) => {
-    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken)
-    window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
+  const setAuthTokens = (tokens: AuthTokenResponse) => {
+    saveAuthTokens(tokens)
     setIsLoggedIn(true)
   }
 
