@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import { allExhibitionsMock } from '../data/allExhibitionsMock'
+import { getEvents, type EventSummary, type EventsSort } from '../api/eventsApi'
 import type {
   AllExhibition,
   AllExhibitionPosterIcon,
@@ -10,31 +11,39 @@ import type {
 } from '../types/allExhibitions'
 import '../styles/AllExhibitions.css'
 
-type SortOption = '마감 임박순' | '거리순'
+type SortOption = '추천순' | '마감 임박순' | '최신순' | '평점순'
 type PeriodFilter = '진행중' | '예정'
 
-const sortOptions: SortOption[] = ['마감 임박순', '거리순']
+const sortOptions: SortOption[] = ['추천순', '마감 임박순', '최신순', '평점순']
 const periodFilters: PeriodFilter[] = ['진행중', '예정']
 const priceFilters: AllExhibitionPriceType[] = ['무료', '유료']
 const dayInMs = 24 * 60 * 60 * 1000
 
 function AllExhibitions() {
-  const { districts, exhibitions, initiallyLikedIds, initialDisplayCount, pageSize, genreFilters } =
-    allExhibitionsMock
+  const { districts, initialDisplayCount, pageSize, genreFilters } = allExhibitionsMock
   const [activeFilter, setActiveFilter] = useState('전체')
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([])
   const [selectedPeriods, setSelectedPeriods] = useState<PeriodFilter[]>([])
   const [selectedPriceTypes, setSelectedPriceTypes] = useState<AllExhibitionPriceType[]>([])
-  const [sortOption, setSortOption] = useState<SortOption>('마감 임박순')
+  const [sortOption, setSortOption] = useState<SortOption>('추천순')
   const [showMoreFilters, setShowMoreFilters] = useState(false)
   const [visibleCount, setVisibleCount] = useState(initialDisplayCount)
-  const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set(initiallyLikedIds))
+  const [apiExhibitions, setApiExhibitions] = useState<EventSummary[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
   const nextCardRef = useRef<HTMLElement | null>(null)
 
   const visibleFilters = showMoreFilters ? genreFilters : genreFilters.slice(0, 4)
   const today = useMemo(() => startOfDay(new Date()), [])
+  const normalizedExhibitions = useMemo(
+    () =>
+      apiExhibitions.length > 0
+        ? apiExhibitions.map((item, index) => normalizeEventSummary(item, index))
+        : [],
+    [apiExhibitions],
+  )
   const filteredExhibitions = useMemo(() => {
-    return exhibitions
+    return normalizedExhibitions
       .filter((item) => {
         const matchesFilter = activeFilter === '전체' || item.category === activeFilter
         const matchesDistrict =
@@ -48,10 +57,49 @@ function AllExhibitions() {
 
         return matchesFilter && matchesDistrict && matchesPeriod && matchesPrice
       })
-      .sort((a, b) => compareExhibitions(a, b, sortOption, today))
-  }, [activeFilter, exhibitions, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption, today])
+  }, [activeFilter, normalizedExhibitions, selectedDistricts, selectedPeriods, selectedPriceTypes, today])
   const visibleExhibitions = filteredExhibitions.slice(0, visibleCount)
   const remainingCount = Math.max(filteredExhibitions.length - visibleExhibitions.length, 0)
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadEvents() {
+      setIsLoading(true)
+      setErrorMessage('')
+
+      try {
+        const response = await getEvents({
+          category: activeFilter === '전체' ? undefined : activeFilter,
+          district: selectedDistricts,
+          status: selectedPeriods.map(toApiStatus),
+          free: selectedPriceTypes.map((priceType) => priceType === '무료'),
+          sort: toEventsSort(sortOption),
+        })
+        const nextEvents = Array.isArray(response) ? response : response.events
+
+        if (!ignore) {
+          setApiExhibitions(nextEvents)
+          setVisibleCount(initialDisplayCount)
+        }
+      } catch {
+        if (!ignore) {
+          setApiExhibitions([])
+          setErrorMessage('전시 목록을 불러오지 못했습니다.')
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void loadEvents()
+
+    return () => {
+      ignore = true
+    }
+  }, [activeFilter, initialDisplayCount, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption])
 
   const toggleDistrict = (district: string) => {
     setVisibleCount(initialDisplayCount)
@@ -70,18 +118,6 @@ function AllExhibitions() {
   const togglePriceType = (priceType: AllExhibitionPriceType) => {
     setVisibleCount(initialDisplayCount)
     setSelectedPriceTypes((current) => toggleListValue(current, priceType))
-  }
-
-  const toggleLike = (id: string) => {
-    setLikedIds((current) => {
-      const next = new Set(current)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
   }
 
   const showMoreExhibitions = () => {
@@ -234,53 +270,76 @@ function AllExhibitions() {
               </label>
             </div>
 
-            <div className="all-grid">
-              {visibleExhibitions.map((item, index) => (
-                <article
-                  className="all-card"
-                  key={item.id}
-                  ref={index === visibleCount - pageSize ? nextCardRef : null}
-                >
-                  <Link className="all-card-link" to={`/exhibitions/${item.id}`}>
-                    <div className={`all-poster poster-${item.icon}`}>
-                      <PosterIcon type={item.icon} />
-                      <span className={`all-badge ${getBadgeClassName(item, today)}`}>
-                        {getAvailabilityLabel(item, today)}
-                      </span>
-                    </div>
-                    <div className="all-card-body">
-                      <p className="all-meta">
-                        <CalendarIcon />
-                        {item.period}
-                      </p>
-                      <p className="all-meta">
-                        <PinIcon />
-                        {item.location} · {item.venue}
-                      </p>
-                      <h3>{item.title}</h3>
-                      <div className="all-card-foot">
-                        <div className="all-card-tags">
-                          <span className="all-category-chip">{item.category}</span>
-                          <span className="all-price-chip">{item.priceType}</span>
-                        </div>
-                        <span className="all-card-distance">{item.distanceKm.toFixed(1)}km</span>
-                      </div>
-                    </div>
-                  </Link>
-                  <button
-                    className={likedIds.has(item.id) ? 'all-heart is-liked' : 'all-heart'}
-                    type="button"
-                    aria-label={likedIds.has(item.id) ? `${item.title} 즐겨찾기 해제` : `${item.title} 즐겨찾기 추가`}
-                    aria-pressed={likedIds.has(item.id)}
-                    onClick={() => toggleLike(item.id)}
-                  >
-                    <HeartIcon filled={likedIds.has(item.id)} />
-                  </button>
-                </article>
-              ))}
-            </div>
+            {isLoading && <div className="all-state" role="status">전시 목록을 불러오는 중입니다.</div>}
 
-            <div className="all-more">
+            {!isLoading && errorMessage && (
+              <div className="all-state is-error" role="alert">
+                {errorMessage}
+              </div>
+            )}
+
+            {!isLoading && !errorMessage && visibleExhibitions.length === 0 && (
+              <div className="all-state">선택한 조건에 맞는 전시가 없습니다.</div>
+            )}
+
+            {!isLoading && !errorMessage && visibleExhibitions.length > 0 && (
+              <div className="all-grid">
+                {visibleExhibitions.map((item, index) => {
+                  const isBookmarked = Boolean(item.bookmarked)
+
+                  return (
+                    <article
+                      className="all-card"
+                      key={item.id}
+                      ref={index === visibleCount - pageSize ? nextCardRef : null}
+                    >
+                      <Link className="all-card-link" to={`/exhibitions/${item.id}`}>
+                        <div className={`all-poster poster-${item.icon}`}>
+                          {item.posterImageUrl ? (
+                            <img src={item.posterImageUrl} alt="" />
+                          ) : (
+                            <PosterIcon type={item.icon} />
+                          )}
+                          <span className={`all-badge ${getBadgeClassName(item, today)}`}>
+                            {item.status || getAvailabilityLabel(item, today)}
+                          </span>
+                        </div>
+                        <div className="all-card-body">
+                          <p className="all-meta">
+                            <CalendarIcon />
+                            {item.period}
+                          </p>
+                          <p className="all-meta">
+                            <PinIcon />
+                            {item.district} · {item.venue}
+                          </p>
+                          <h3>{item.title}</h3>
+                          <div className="all-card-foot">
+                            <div className="all-card-tags">
+                              <span className="all-category-chip">{item.category}</span>
+                              <span className="all-price-chip">{item.priceType}</span>
+                            </div>
+                            <span className="all-card-distance">
+                              {formatDistanceAndRating(item.distanceKm, item.rating)}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                      <button
+                        className={isBookmarked ? 'all-heart is-liked' : 'all-heart'}
+                        type="button"
+                        aria-label={isBookmarked ? `${item.title} 즐겨찾기 해제` : `${item.title} 즐겨찾기 추가`}
+                        aria-pressed={isBookmarked}
+                      >
+                        <HeartIcon filled={isBookmarked} />
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+
+            {!isLoading && !errorMessage && visibleExhibitions.length > 0 && <div className="all-more">
               {remainingCount > 0 && (
                 <button type="button" onClick={showMoreExhibitions}>
                   더 보기 ({remainingCount})
@@ -289,7 +348,7 @@ function AllExhibitions() {
               <span>
                 {filteredExhibitions.length}개 중 {visibleExhibitions.length}개 표시 중
               </span>
-            </div>
+            </div>}
           </section>
         </div>
       </div>
@@ -305,24 +364,6 @@ function toggleListValue<T>(values: T[], value: T) {
   }
 
   return [...values, value]
-}
-
-function compareExhibitions(
-  a: AllExhibition,
-  b: AllExhibition,
-  sortOption: SortOption,
-  today: Date,
-) {
-  if (sortOption === '거리순') {
-    return a.distanceKm - b.distanceKm
-  }
-
-  return getDeadlineSortTime(a, today) - getDeadlineSortTime(b, today)
-}
-
-function getDeadlineSortTime(item: AllExhibition, today: Date) {
-  const end = parseIsoDate(item.endDate)
-  return end < today ? Number.MAX_SAFE_INTEGER : end.getTime()
 }
 
 function getPeriodStatus(item: AllExhibition, today: Date): PeriodFilter | '종료' {
@@ -376,6 +417,10 @@ function getBadgeClassName(item: AllExhibition, today: Date) {
 
 function parseIsoDate(value: string) {
   const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) {
+    return startOfDay(new Date())
+  }
+
   return createLocalDate(year, month, day)
 }
 
@@ -393,6 +438,80 @@ function getDayDifference(from: Date, to: Date) {
 
 function isSameDay(a: Date, b: Date) {
   return a.getTime() === b.getTime()
+}
+
+function normalizeEventSummary(item: EventSummary, index: number): AllExhibition & {
+  posterImageUrl?: string
+  status: string
+  rating?: number
+  bookmarked?: boolean
+} {
+  const id = String(item.eventId ?? item.id)
+  const startDate = item.startDate ?? ''
+  const endDate = item.endDate ?? ''
+  const district = item.district ?? item.location ?? ''
+
+  return {
+    id,
+    title: item.title ?? '제목 없는 전시',
+    category: item.category ?? '전시',
+    venue: item.venue ?? '',
+    location: item.location ?? district,
+    district,
+    period: formatPeriod(startDate, endDate),
+    startDate,
+    endDate,
+    priceType: item.free ? '무료' : '유료',
+    distanceKm: item.distanceKm ?? 0,
+    icon: getFallbackPosterIcon(index),
+    posterImageUrl: item.posterImageUrl,
+    status: item.status ?? '',
+    rating: item.rating,
+    bookmarked: item.bookmarked,
+  }
+}
+
+function formatPeriod(startDate: string, endDate: string) {
+  return [formatDate(startDate), formatDate(endDate)].filter(Boolean).join(' - ')
+}
+
+function formatDate(value: string) {
+  return value.replaceAll('-', '.')
+}
+
+function getFallbackPosterIcon(index: number): AllExhibitionPosterIcon {
+  const icons: AllExhibitionPosterIcon[] = ['filter', 'waves', 'music', 'palette', 'mind', 'dance']
+
+  return icons[index % icons.length]
+}
+
+function toEventsSort(sortOption: SortOption): EventsSort {
+  const sortByOption: Record<SortOption, EventsSort> = {
+    추천순: 'match',
+    '마감 임박순': 'deadline',
+    최신순: 'latest',
+    평점순: 'rating',
+  }
+
+  return sortByOption[sortOption]
+}
+
+function toApiStatus(status: PeriodFilter) {
+  return status === '진행중' ? 'ongoing' : 'upcoming'
+}
+
+function formatDistanceAndRating(distanceKm: number, rating?: number) {
+  const parts = []
+
+  if (distanceKm > 0) {
+    parts.push(`${distanceKm.toFixed(1)}km`)
+  }
+
+  if (typeof rating === 'number') {
+    parts.push(`★ ${rating.toFixed(1)}`)
+  }
+
+  return parts.join(' · ')
 }
 
 function PosterIcon({ type }: { type: AllExhibitionPosterIcon }) {

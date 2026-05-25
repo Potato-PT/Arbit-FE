@@ -27,7 +27,7 @@ export type MyReview = {
 }
 
 export type MyBookmark = {
-  eventId: string
+  eventId?: string
   title: string
   posterImageUrl: string
   category: string
@@ -39,4 +39,16 @@ export type MyBookmark = {
 
 export type UpdateNicknameRequest = {
   nickname: string
+}
+
+export type UpdateNicknameResponse = {
+  nickname: string
+}
+
+export type UpdateProfileImageResponse = {
+  profileImageUrl: string
+}
+
+export type DeleteMyAccountResponse = {
+  message?: string
 }

@@ -9,6 +9,13 @@ export interface Exhibition {
   venue: string
   artwork: ExhibitionArtwork
   liked: boolean
+  posterImageUrl?: string
+  startDate?: string
+  endDate?: string
+  free?: boolean
+  status?: string
+  matchScore?: number
+  bookmarked?: boolean
 }
 
 export interface HeroExhibition extends Exhibition {
@@ -18,3 +25,13 @@ export interface HeroExhibition extends Exhibition {
 }
 
 export type RecommendedExhibition = Exhibition
+
+export type HomePayload = {
+  heroExhibition?: HeroExhibition
+  hero?: HeroExhibition
+  recommendedExhibitions?: RecommendedExhibition[]
+  recommendations?: RecommendedExhibition[]
+  events?: RecommendedExhibition[]
+}
+
+export type HomeResponse = HomePayload | RecommendedExhibition[]

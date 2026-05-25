@@ -123,6 +123,12 @@
   transform: translateY(-1px);
 }
 
+.star-picker button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
 .star-picker button:active {
   transform: translateY(0) scale(0.96);
 }
@@ -232,6 +238,13 @@
   font-weight: 700;
 }
 
+.review-success {
+  margin: -6px 0 0;
+  color: #3f7b57;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .review-write-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -258,6 +271,12 @@
   border: 1px solid #e7ded5;
   background: #ffffff;
   color: #675e56;
+}
+
+.review-submit:disabled,
+.review-cancel:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .review-write-missing {

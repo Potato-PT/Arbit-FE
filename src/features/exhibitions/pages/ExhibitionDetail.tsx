@@ -1,19 +1,96 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { getExhibitionDetail } from '../data/exhibitionDetails'
+import { ApiError } from '../../user/api/authApi'
+import { getEventDetail, type EventDetail, type EventReview } from '../api/eventsApi'
 import '../styles/ExhibitionDetail.css'
 
 function ExhibitionDetail() {
   const { id } = useParams()
-  const exhibition = getExhibitionDetail(id)
+  const [eventDetail, setEventDetail] = useState<EventDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isNotFound, setIsNotFound] = useState(false)
+  const exhibition = useMemo(
+    () => (eventDetail ? normalizeEventDetail(eventDetail) : null),
+    [eventDetail],
+  )
 
-  if (!exhibition) {
+  useEffect(() => {
+    let ignore = false
+
+    async function loadEventDetail(eventId: string) {
+      setIsLoading(true)
+      setErrorMessage('')
+      setIsNotFound(false)
+
+      try {
+        const nextEventDetail = await getEventDetail(eventId)
+
+        if (!ignore) {
+          setEventDetail(nextEventDetail)
+        }
+      } catch (error) {
+        if (ignore) {
+          return
+        }
+
+        setEventDetail(null)
+
+        if (error instanceof ApiError && error.status === 404) {
+          setIsNotFound(true)
+        } else {
+          setErrorMessage('이벤트 상세 정보를 불러오지 못했습니다.')
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    if (id) {
+      void loadEventDetail(id)
+    } else {
+      setIsLoading(false)
+      setIsNotFound(true)
+    }
+
+    return () => {
+      ignore = true
+    }
+  }, [id])
+
+  if (isLoading) {
+    return (
+      <main className="detail-page">
+        <AppHeader />
+        <section className="detail-not-found" role="status">
+          <h1>이벤트를 불러오는 중입니다.</h1>
+        </section>
+      </main>
+    )
+  }
+
+  if (isNotFound) {
     return (
       <main className="detail-page">
         <AppHeader />
         <section className="detail-not-found">
-          <h1>전시를 찾을 수 없습니다</h1>
+          <h1>이벤트를 찾을 수 없습니다.</h1>
+          <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
+        </section>
+      </main>
+    )
+  }
+
+  if (errorMessage || !exhibition) {
+    return (
+      <main className="detail-page">
+        <AppHeader />
+        <section className="detail-not-found" role="alert">
+          <h1>{errorMessage || '이벤트 상세 정보를 불러오지 못했습니다.'}</h1>
           <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
         </section>
       </main>
@@ -25,12 +102,18 @@ function ExhibitionDetail() {
       <AppHeader />
 
       <section className="detail-hero" aria-labelledby="detail-title">
-        <div className={`detail-art detail-art-${exhibition.artwork}`} aria-hidden="true">
-          <span className="vessel vessel-small" />
-          <span className="vessel vessel-tall" />
-          <span className="vessel vessel-ring" />
-          <span className="vessel vessel-round" />
-          <span className="detail-plinth" />
+        <div className="detail-art" aria-hidden="true">
+          {exhibition.posterImageUrl ? (
+            <img src={exhibition.posterImageUrl} alt="" />
+          ) : (
+            <>
+              <span className="vessel vessel-small" />
+              <span className="vessel vessel-tall" />
+              <span className="vessel vessel-ring" />
+              <span className="vessel vessel-round" />
+              <span className="detail-plinth" />
+            </>
+          )}
         </div>
 
         <div className="detail-summary">
@@ -51,19 +134,19 @@ function ExhibitionDetail() {
             <div>
               <dt>장소</dt>
               <dd>
-                <PinIcon />
-                {exhibition.venue}, {exhibition.hall}
+                  <PinIcon />
+                {exhibition.district} · {exhibition.venue}
               </dd>
             </div>
             <div>
               <dt>입장료</dt>
               <dd className="detail-price">
-                {exhibition.price} <span>/ 1인</span>
+                {exhibition.fee} <span>{exhibition.free ? '/ 무료' : '/ 1인'}</span>
               </dd>
             </div>
             <div>
               <dt>행사 시간</dt>
-              <dd>{exhibition.eventTime}</dd>
+              <dd>{exhibition.time}</dd>
             </div>
             <div>
               <dt>태그</dt>
@@ -75,7 +158,7 @@ function ExhibitionDetail() {
             </div>
           </dl>
 
-          <a className="homepage-button" href={exhibition.homepageUrl}>
+          <a className="homepage-button" href={exhibition.url}>
             홈페이지 바로가기
           </a>
         </div>
@@ -115,6 +198,59 @@ function ExhibitionDetail() {
       <AppFooter />
     </main>
   )
+}
+
+function normalizeEventDetail(item: EventDetail) {
+  const id = String(item.eventId ?? item.id)
+  const startDate = item.startDate ?? ''
+  const endDate = item.endDate ?? ''
+  const tags = item.tag ?? item.tags ?? []
+  const rating = item.rating ?? 0
+  const fee = item.fee ?? item.price ?? (item.free ? '무료' : '유료')
+  const reviews = item.reviews ?? []
+
+  return {
+    id,
+    title: item.title ?? '제목 없는 이벤트',
+    category: item.category ?? '전시',
+    posterImageUrl: item.posterImageUrl,
+    url: item.url ?? item.homepageUrl ?? '#',
+    district: item.district ?? item.location ?? '',
+    venue: item.venue ?? '',
+    period: formatPeriod(startDate, endDate),
+    startDate,
+    endDate,
+    fee,
+    time: item.time ?? item.eventTime ?? '',
+    free: Boolean(item.free),
+    tags,
+    status: item.status ?? '',
+    rating,
+    bookmarked: Boolean(item.bookmarked),
+    reviews: reviews.map(normalizeReview),
+  }
+}
+
+function normalizeReview(review: EventReview, index: number) {
+  const rating = review.rating ?? review.starScore ?? 0
+
+  return {
+    id: String(review.reviewId ?? review.id ?? index),
+    rating: Math.max(0, Math.min(5, Math.round(rating))),
+    content: review.content ?? '',
+    author: review.author ?? review.nickname ?? '익명',
+    visitedAt: review.visitedAt ?? review.createdAt ?? '',
+    tone: (['warm', 'soft', 'blush'] as const)[index % 3],
+    isPublic: review.isPublic ?? review.public ?? true,
+  }
+}
+
+function formatPeriod(startDate: string, endDate: string) {
+  return [formatDate(startDate), formatDate(endDate)].filter(Boolean).join(' - ')
+}
+
+function formatDate(value: string) {
+  return value.replaceAll('-', '.')
 }
 
 function PinIcon() {

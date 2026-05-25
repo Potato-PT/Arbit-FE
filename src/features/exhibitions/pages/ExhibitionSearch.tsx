@@ -1,15 +1,18 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { genreFilters, searchExhibitions, seoulDistricts } from '../data/searchMock'
+import { genreFilters, seoulDistricts } from '../data/searchMock'
+import { searchEvents, type EventSearchSort, type EventSummary } from '../api/eventsApi'
+import type { SearchArtwork, SearchExhibition } from '../types/search'
 import '../styles/ExhibitionSearch.css'
 
-type SortOption = '거리순' | '낮은 가격순'
+type SortOption = '거리순' | '마감 임박순' | '예정순'
 
 const periodFilters = ['진행중', '예정'] as const
 const priceFilters = ['무료', '유료'] as const
+const sortOptions: SortOption[] = ['거리순', '마감 임박순', '예정순']
 
 function ExhibitionSearch() {
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(['마포구'])
@@ -19,49 +22,76 @@ function ExhibitionSearch() {
   const [districtQuery, setDistrictQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<SortOption>('거리순')
+  const [events, setEvents] = useState<EventSummary[]>([])
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
 
-  const filteredExhibitions = useMemo(() => {
-    const normalizedDistrictQuery = districtQuery.trim().toLowerCase()
-    const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const filteredExhibitions = useMemo(
+    () => events.map((event, index) => normalizeSearchEvent(event, index)),
+    [events],
+  )
 
-    return searchExhibitions
-      .filter((item) => {
-        const matchesDistrict =
-          selectedDistricts.length === 0 ||
-          selectedDistricts.includes(item.district) ||
-          selectedDistricts.includes(item.location)
-        const matchesDistrictQuery =
-          normalizedDistrictQuery.length === 0 ||
-          item.district.toLowerCase().includes(normalizedDistrictQuery) ||
-          item.location.toLowerCase().includes(normalizedDistrictQuery)
-        const matchesGenre =
-          selectedGenres.length === 0 || selectedGenres.includes(item.category)
-        const matchesPeriod =
-          selectedPeriods.length === 0 || selectedPeriods.includes(item.periodStatus)
-        const matchesPrice =
-          selectedPriceTypes.length === 0 || selectedPriceTypes.includes(item.priceType)
-        const matchesSearch =
-          normalizedSearchQuery.length === 0 ||
-          item.title.toLowerCase().includes(normalizedSearchQuery) ||
-          item.venue.toLowerCase().includes(normalizedSearchQuery) ||
-          item.category.toLowerCase().includes(normalizedSearchQuery)
+  useEffect(() => {
+    if (sortOption !== '거리순' || userLocation || typeof navigator === 'undefined') {
+      return
+    }
 
-        return (
-          matchesDistrict &&
-          matchesDistrictQuery &&
-          matchesGenre &&
-          matchesPeriod &&
-          matchesPrice &&
-          matchesSearch
-        )
-      })
-      .sort((a, b) => {
-        if (sortOption === '낮은 가격순') {
-          return getPriceValue(a.price) - getPriceValue(b.price)
+    navigator.geolocation?.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+      },
+      () => undefined,
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
+    )
+  }, [sortOption, userLocation])
+
+  useEffect(() => {
+    let ignore = false
+    const districtValues = [...selectedDistricts, districtQuery.trim()].filter(Boolean)
+    const searchSort = toSearchSort(sortOption)
+    const shouldIncludeLocation = searchSort === 'distance' && userLocation
+
+    async function loadSearchEvents() {
+      setIsLoading(true)
+      setErrorMessage('')
+
+      try {
+        const response = await searchEvents({
+          title: searchQuery.trim() || undefined,
+          category: selectedGenres.length === 1 ? selectedGenres[0] : undefined,
+          district: districtValues,
+          status: selectedPeriods.map(toApiStatus),
+          free: selectedPriceTypes.map((priceType) => priceType === '무료'),
+          sort: searchSort,
+          lat: shouldIncludeLocation ? userLocation.lat : undefined,
+          lng: shouldIncludeLocation ? userLocation.lng : undefined,
+        })
+        const nextEvents = Array.isArray(response) ? response : response.events
+
+        if (!ignore) {
+          setEvents(nextEvents)
         }
+      } catch {
+        if (!ignore) {
+          setEvents([])
+          setErrorMessage('검색 결과를 불러오지 못했습니다.')
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false)
+        }
+      }
+    }
 
-        return a.distanceKm - b.distanceKm
-      })
+    void loadSearchEvents()
+
+    return () => {
+      ignore = true
+    }
   }, [
     districtQuery,
     searchQuery,
@@ -70,6 +100,7 @@ function ExhibitionSearch() {
     selectedPeriods,
     selectedPriceTypes,
     sortOption,
+    userLocation,
   ])
 
   const toggleDistrict = (district: string) => {
@@ -77,7 +108,7 @@ function ExhibitionSearch() {
   }
 
   const toggleGenre = (genre: string) => {
-    setSelectedGenres((current) => toggleListValue(current, genre))
+    setSelectedGenres((current) => (current.includes(genre) ? [] : [genre]))
   }
 
   const togglePeriod = (period: string) => {
@@ -89,7 +120,7 @@ function ExhibitionSearch() {
   }
 
   const handleSortClick = () => {
-    setSortOption((current) => (current === '거리순' ? '낮은 가격순' : '거리순'))
+    setSortOption((current) => sortOptions[(sortOptions.indexOf(current) + 1) % sortOptions.length])
   }
 
   return (
@@ -198,22 +229,39 @@ function ExhibitionSearch() {
             총 <strong>{filteredExhibitions.length}개</strong>의 전시가 있습니다
           </p>
 
-          {filteredExhibitions.length > 0 ? (
+          {isLoading && (
+            <div className="empty-results" role="status">
+              <p>검색 결과를 불러오는 중입니다.</p>
+            </div>
+          )}
+
+          {!isLoading && errorMessage && (
+            <div className="empty-results is-error" role="alert">
+              <p>{errorMessage}</p>
+            </div>
+          )}
+
+          {!isLoading && !errorMessage && filteredExhibitions.length > 0 ? (
             <div className="result-grid">
               {filteredExhibitions.map((item) => (
                 <Link className="result-card" key={item.id} to={`/exhibitions/${item.id}`}>
                   <div className={`result-art result-art-${item.artwork}`}>
+                    {item.posterImageUrl ? <img src={item.posterImageUrl} alt="" /> : <span className="art-shape" />}
                     {item.badge ? <span className="result-badge">{item.badge}</span> : null}
-                    <span className="art-shape" />
                   </div>
                   <div className="result-body">
                     <p className="result-meta">
-                      {item.category} · {item.location}
+                      {item.category} · {item.district}
                     </p>
                     <h2>{item.title}</h2>
-                    <p className="result-venue">{item.venue}</p>
+                    <p className="result-venue">
+                      {item.venue} · {item.period}
+                    </p>
                     <div className="result-footer">
                       <strong>{item.price}</strong>
+                      <span className="result-detail-meta">
+                        {formatDistanceAndRating(item.distanceKm, item.rating)}
+                      </span>
                       <span
                         className={item.liked ? 'result-heart is-liked' : 'result-heart'}
                         aria-label={`${item.title} 찜하기`}
@@ -226,15 +274,17 @@ function ExhibitionSearch() {
                 </Link>
               ))}
             </div>
-          ) : (
+          ) : null}
+
+          {!isLoading && !errorMessage && filteredExhibitions.length === 0 && (
             <div className="empty-results">
               <p>선택한 조건에 맞는 전시가 없습니다</p>
             </div>
           )}
 
-          <button className="load-more" type="button">
+          {!isLoading && !errorMessage && filteredExhibitions.length > 0 && <button className="load-more" type="button">
             전시 더보기
-          </button>
+          </button>}
         </section>
       </div>
       <AppFooter />
@@ -248,14 +298,6 @@ function toggleListValue(values: string[], value: string) {
   }
 
   return [...values, value]
-}
-
-function getPriceValue(price: string) {
-  if (price === '무료') {
-    return 0
-  }
-
-  return Number(price.replace(/[^0-9]/g, '')) || 0
 }
 
 function FilterSection({
@@ -276,6 +318,79 @@ function FilterSection({
       {children}
     </section>
   )
+}
+
+function normalizeSearchEvent(item: EventSummary, index: number): SearchExhibition & {
+  posterImageUrl?: string
+  period: string
+  rating?: number
+} {
+  const id = String(item.eventId ?? item.id)
+  const startDate = item.startDate ?? ''
+  const endDate = item.endDate ?? ''
+  const district = item.district ?? item.location ?? ''
+  const free = Boolean(item.free)
+
+  return {
+    id,
+    badge: item.status,
+    category: item.category ?? '전시',
+    location: item.location ?? district,
+    district,
+    periodStatus: item.status === '예정' || item.status === 'upcoming' ? '예정' : '진행중',
+    priceType: free ? '무료' : '유료',
+    distanceKm: item.distanceKm ?? 0,
+    title: item.title ?? '제목 없는 전시',
+    venue: item.venue ?? '',
+    price: free ? '무료' : '유료',
+    artwork: getFallbackArtwork(index),
+    liked: Boolean(item.bookmarked),
+    posterImageUrl: item.posterImageUrl,
+    period: formatPeriod(startDate, endDate),
+    rating: item.rating,
+  }
+}
+
+function formatPeriod(startDate: string, endDate: string) {
+  return [formatDate(startDate), formatDate(endDate)].filter(Boolean).join(' - ')
+}
+
+function formatDate(value: string) {
+  return value.replaceAll('-', '.')
+}
+
+function getFallbackArtwork(index: number): SearchArtwork {
+  const artworks: SearchArtwork[] = ['pastel', 'soft-shape', 'light-bunker', 'flame', 'rose', 'busan-sea']
+
+  return artworks[index % artworks.length]
+}
+
+function toSearchSort(sortOption: SortOption): EventSearchSort {
+  const sortByOption: Record<SortOption, EventSearchSort> = {
+    거리순: 'distance',
+    '마감 임박순': 'deadline',
+    예정순: 'upcoming',
+  }
+
+  return sortByOption[sortOption]
+}
+
+function toApiStatus(status: string) {
+  return status === '진행중' ? 'ongoing' : 'upcoming'
+}
+
+function formatDistanceAndRating(distanceKm: number, rating?: number) {
+  const parts = []
+
+  if (distanceKm > 0) {
+    parts.push(`${distanceKm.toFixed(1)}km`)
+  }
+
+  if (typeof rating === 'number') {
+    parts.push(`★ ${rating.toFixed(1)}`)
+  }
+
+  return parts.join(' · ')
 }
 
 function SearchIcon() {

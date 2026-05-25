@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
+import { ApiError } from '../api/authApi'
+import {
+  getPreferenceCategories,
+  savePreferences,
+  type PreferenceCategory,
+  type PreferenceDetailOption,
+} from '../api/preferencesApi'
 import {
   preferenceMediaCategories,
-  type PreferenceDetailOption,
 } from '../data/preferenceCategories'
 import '../styles/Preferences.css'
 
@@ -51,7 +57,8 @@ const mediaStampLabels: Record<string, string> = {
 
 function Preferences() {
   const navigate = useNavigate()
-  const defaultMediaId = preferenceMediaCategories[0]?.id ?? ''
+  const [mediaCategories, setMediaCategories] = useState<PreferenceCategory[]>(preferenceMediaCategories)
+  const defaultMediaId = mediaCategories[0]?.id ?? ''
   const [selectedMediaId, setSelectedMediaId] = useState(defaultMediaId)
   const [selectedDetailIdsByMedia, setSelectedDetailIdsByMedia] = useState<Record<string, string[]>>({
     [defaultMediaId]: [preferenceMediaCategories[0]?.details[0]?.id ?? ''].filter(Boolean),
@@ -59,11 +66,61 @@ function Preferences() {
   const [selectedMoods, setSelectedMoods] = useState<string[]>(['healing-emotional'])
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>(['adult'])
   const [freeText, setFreeText] = useState('')
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const selectedMediaCategory =
-    preferenceMediaCategories.find((category) => category.id === selectedMediaId) ??
-    preferenceMediaCategories[0]
+    mediaCategories.find((category) => category.id === selectedMediaId) ??
+    mediaCategories[0]
   const detailOptions = selectedMediaCategory?.details ?? []
   const selectedDetails = selectedDetailIdsByMedia[selectedMediaId] ?? []
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadPreferenceCategories() {
+      setIsLoadingCategories(true)
+      setErrorMessage('')
+
+      try {
+        const response = await getPreferenceCategories()
+        const nextCategories = normalizePreferenceCategories(response)
+
+        if (!ignore) {
+          setMediaCategories(nextCategories.length > 0 ? nextCategories : preferenceMediaCategories)
+          initializeSelections(nextCategories.length > 0 ? nextCategories : preferenceMediaCategories)
+        }
+      } catch (error) {
+        if (!ignore) {
+          setErrorMessage(
+            error instanceof ApiError && error.status === 401
+              ? '로그인이 필요합니다.'
+              : '취향 선택 옵션을 불러오지 못했습니다.',
+          )
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingCategories(false)
+        }
+      }
+    }
+
+    void loadPreferenceCategories()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const initializeSelections = (categories: PreferenceCategory[]) => {
+    const nextDefaultMediaId = categories[0]?.id ?? ''
+    const nextDefaultDetailId = categories[0]?.details?.[0]?.id ?? ''
+
+    setSelectedMediaId(nextDefaultMediaId)
+    setSelectedDetailIdsByMedia({
+      [nextDefaultMediaId]: nextDefaultDetailId ? [nextDefaultDetailId] : [],
+    })
+  }
 
   const toggleSelection = (
     id: string,
@@ -114,6 +171,44 @@ function Preferences() {
     })
   }
 
+  const handleSubmit = async () => {
+    if (isSubmitting) {
+      return
+    }
+
+    const request = createSavePreferencesRequest({
+      mediaCategories,
+      selectedMediaId,
+      selectedDetails,
+      selectedMoods,
+      selectedAudiences,
+      freeText,
+    })
+
+    if (Object.values(request).some((keyword) => !keyword.trim())) {
+      setErrorMessage('선택한 취향 정보를 확인해주세요.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setErrorMessage('')
+
+    try {
+      await savePreferences(request)
+      navigate('/')
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 400) {
+        setErrorMessage('선택한 취향 정보를 확인해주세요.')
+      } else if (error instanceof ApiError && error.status === 401) {
+        setErrorMessage('로그인이 필요합니다.')
+      } else {
+        setErrorMessage('취향 정보를 저장하지 못했습니다.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <main className="preferences-page" aria-label="취향 선택">
       <AppHeader variant="warm" />
@@ -133,79 +228,98 @@ function Preferences() {
           </p>
         </section>
 
-        <section className="preferences-section" aria-labelledby="media-title">
-          <SectionHeader number="01" title="매체 선택" note="하나만 선택 가능" titleId="media-title" />
-          <div className="media-scroll" aria-label="매체 옵션">
-            {preferenceMediaCategories.map((option) => {
-              const isSelected = selectedMediaId === option.id
-
-              return (
-                <button
-                  className={isSelected ? 'media-card is-selected' : 'media-card'}
-                  type="button"
-                  aria-pressed={isSelected}
-                  key={option.id}
-                  onClick={() => setSelectedMediaId(option.id)}
-                >
-                  <span className="stamp-en">{mediaEnglishLabels[option.id] ?? option.label}</span>
-                  <span className="stamp-overlay" aria-hidden="true">
-                    <span className="stamp-mark">
-                      <span className="stamp-mark-top">Selected</span>
-                      <span className="stamp-mark-star">* * *</span>
-                      <span className="stamp-mark-bottom">
-                        {mediaStampLabels[option.id] ?? option.label}
-                      </span>
-                    </span>
-                  </span>
-                  <span className="stamp-ko">{option.label}</span>
-                </button>
-              )
-            })}
+        {isLoadingCategories ? (
+          <div className="preferences-status" role="status">
+            취향 선택 옵션을 불러오는 중입니다.
           </div>
-        </section>
+        ) : (
+          <>
+            {errorMessage && (
+              <div className="preferences-status is-error" role="alert">
+                {errorMessage}
+              </div>
+            )}
 
-        <PreferenceGroup
-          number="02"
-          title="세부 매체 선택"
-          options={detailOptions}
-          selected={selectedDetails}
-          onToggle={toggleDetailSelection}
-          onToggleAll={toggleAllDetails}
-          chipClassName="detail-chip"
-        />
+            <section className="preferences-section" aria-labelledby="media-title">
+              <SectionHeader number="01" title="매체 선택" note="하나만 선택 가능" titleId="media-title" />
+              <div className="media-scroll" aria-label="매체 옵션">
+                {mediaCategories.map((option) => {
+                  const isSelected = selectedMediaId === option.id
 
-        <PreferenceGroup
-          number="03"
-          title="무드 선택"
-          options={moodOptions}
-          selected={selectedMoods}
-          onToggle={(id) => toggleSelection(id, selectedMoods, setSelectedMoods)}
-          onToggleAll={() => toggleAll(moodOptions, selectedMoods, setSelectedMoods)}
-        />
+                  return (
+                    <button
+                      className={isSelected ? 'media-card is-selected' : 'media-card'}
+                      type="button"
+                      aria-pressed={isSelected}
+                      key={option.id}
+                      onClick={() => setSelectedMediaId(option.id)}
+                    >
+                      <span className="stamp-en">{mediaEnglishLabels[option.id] ?? option.label}</span>
+                      <span className="stamp-overlay" aria-hidden="true">
+                        <span className="stamp-mark">
+                          <span className="stamp-mark-top">Selected</span>
+                          <span className="stamp-mark-star">* * *</span>
+                          <span className="stamp-mark-bottom">
+                            {mediaStampLabels[option.id] ?? option.label}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="stamp-ko">{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
 
-        <PreferenceGroup
-          number="04"
-          title="관람자 선택"
-          options={audienceOptions}
-          selected={selectedAudiences}
-          onToggle={(id) => toggleSelection(id, selectedAudiences, setSelectedAudiences)}
-          onToggleAll={() => toggleAll(audienceOptions, selectedAudiences, setSelectedAudiences)}
-        />
+            <PreferenceGroup
+              number="02"
+              title="세부 매체 선택"
+              options={detailOptions}
+              selected={selectedDetails}
+              onToggle={toggleDetailSelection}
+              onToggleAll={toggleAllDetails}
+              chipClassName="detail-chip"
+            />
 
-        <section className="preferences-section freeform-section" aria-labelledby="freeform-title">
-          <SectionHeader number="05" title="직접 입력" titleId="freeform-title" />
-          <textarea
-            value={freeText}
-            onChange={(event) => setFreeText(event.target.value)}
-            placeholder="예: 베를린 감성의 현대 전시, 실험적인 사운드 아트 등"
-            aria-label="직접 입력"
-          />
-          <p className="input-hint">원하시는 분위기나 특별한 취향을 자유롭게 입력해주세요.</p>
-        </section>
+            <PreferenceGroup
+              number="03"
+              title="무드 선택"
+              options={moodOptions}
+              selected={selectedMoods}
+              onToggle={(id) => toggleSelection(id, selectedMoods, setSelectedMoods)}
+              onToggleAll={() => toggleAll(moodOptions, selectedMoods, setSelectedMoods)}
+            />
+
+            <PreferenceGroup
+              number="04"
+              title="관람자 선택"
+              options={audienceOptions}
+              selected={selectedAudiences}
+              onToggle={(id) => toggleSelection(id, selectedAudiences, setSelectedAudiences)}
+              onToggleAll={() => toggleAll(audienceOptions, selectedAudiences, setSelectedAudiences)}
+            />
+
+            <section className="preferences-section freeform-section" aria-labelledby="freeform-title">
+              <SectionHeader number="05" title="직접 입력" titleId="freeform-title" />
+              <textarea
+                value={freeText}
+                onChange={(event) => setFreeText(event.target.value)}
+                placeholder="예: 베를린 감성의 현대 전시, 실험적인 사운드 아트 등"
+                aria-label="직접 입력"
+              />
+              <p className="input-hint">원하시는 분위기나 특별한 취향을 자유롭게 입력해주세요.</p>
+            </section>
+          </>
+        )}
 
         <div className="cta-wrap">
-          <button className="preferences-submit" type="button" onClick={() => navigate('/')}>
-            회원가입 완료하기
+          <button
+            className="preferences-submit"
+            type="button"
+            disabled={isLoadingCategories || isSubmitting}
+            onClick={handleSubmit}
+          >
+            {isSubmitting ? '저장 중' : '회원가입 완료하기'}
           </button>
           <p>취향 정보는 언제든 수정할 수 있습니다</p>
         </div>
@@ -213,6 +327,45 @@ function Preferences() {
       <AppFooter />
     </main>
   )
+}
+
+function normalizePreferenceCategories(
+  response: Awaited<ReturnType<typeof getPreferenceCategories>>,
+): PreferenceCategory[] {
+  return Array.isArray(response) ? response : response.categories
+}
+
+function createSavePreferencesRequest({
+  mediaCategories,
+  selectedMediaId,
+  selectedDetails,
+  selectedMoods,
+  selectedAudiences,
+  freeText,
+}: {
+  mediaCategories: PreferenceCategory[]
+  selectedMediaId: string
+  selectedDetails: string[]
+  selectedMoods: string[]
+  selectedAudiences: string[]
+  freeText: string
+}) {
+  const selectedMediaCategory = mediaCategories.find((category) => category.id === selectedMediaId)
+  const detailLabels = mapOptionLabels(selectedMediaCategory?.details ?? [], selectedDetails)
+  const moodLabels = mapOptionLabels(moodOptions, selectedMoods)
+  const audienceLabels = mapOptionLabels(audienceOptions, selectedAudiences)
+  const keyword4Values = [...audienceLabels, freeText.trim()].filter(Boolean)
+
+  return {
+    keyword1: selectedMediaCategory?.label ?? selectedMediaId,
+    keyword2: detailLabels.join(', '),
+    keyword3: moodLabels.join(', '),
+    keyword4: keyword4Values.join(', '),
+  }
+}
+
+function mapOptionLabels(options: Option[] | PreferenceDetailOption[], selectedIds: string[]) {
+  return selectedIds.map((id) => options.find((option) => option.id === id)?.label ?? id)
 }
 
 function SectionHeader({

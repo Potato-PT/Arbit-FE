@@ -2,7 +2,10 @@ import { useMemo, useState, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { addExhibitionReview, getExhibitionDetail } from '../data/exhibitionDetails'
+import { readAccessToken } from '../../../api/authStorage'
+import { ApiError } from '../../user/api/authApi'
+import { createEventReview } from '../api/eventsApi'
+import { getExhibitionDetail } from '../data/exhibitionDetails'
 import '../styles/ReviewWrite.css'
 
 type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
@@ -14,12 +17,16 @@ function ReviewWrite() {
   const { id } = useParams()
   const navigate = useNavigate()
   const exhibition = getExhibitionDetail(id)
+  const exhibitionTitle = exhibition?.title ?? '이벤트'
   const [rating, setRating] = useState(5)
   const [content, setContent] = useState('')
+  const [verificationImageUrl, setVerificationImageUrl] = useState('')
   const [visitedYear, setVisitedYear] = useState('')
   const [visitedMonth, setVisitedMonth] = useState('')
   const [isPublic, setIsPublic] = useState(true)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const formattedVisit = useMemo(() => {
     if (!visitedYear || !visitedMonth) {
@@ -29,7 +36,7 @@ function ReviewWrite() {
     return `${visitedYear}년 ${Number(visitedMonth)}월 방문`
   }, [visitedMonth, visitedYear])
 
-  if (!exhibition || !id) {
+  if (!id) {
     return (
       <main className="review-write-page">
         <AppHeader />
@@ -44,37 +51,69 @@ function ReviewWrite() {
   const exhibitionId = id
   const detailPath = `/exhibitions/${exhibitionId}`
 
-  const handleSubmit: FormSubmitHandler = (event) => {
+  const handleSubmit: FormSubmitHandler = async (event) => {
     event.preventDefault()
+
+    if (isSubmitting) {
+      return
+    }
+
+    if (!readAccessToken()) {
+      setError('로그인이 필요합니다.')
+      setSuccessMessage('')
+      return
+    }
 
     if (!content.trim()) {
       setError('후기 내용을 입력해 주세요.')
+      setSuccessMessage('')
       return
     }
 
     if (!formattedVisit) {
       setError('방문 시점을 선택해 주세요.')
+      setSuccessMessage('')
       return
     }
 
-    addExhibitionReview(exhibitionId, {
-      rating,
-      content: content.trim(),
-      visitedAt: formattedVisit,
-      isPublic,
-    })
-    navigate(detailPath)
+    if (!verificationImageUrl.trim()) {
+      setError('인증 이미지 URL을 입력해 주세요.')
+      setSuccessMessage('')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError('')
+    setSuccessMessage('')
+
+    try {
+      await createEventReview(exhibitionId, {
+        rating,
+        content: content.trim(),
+        verificationImageUrl: verificationImageUrl.trim(),
+      })
+      setSuccessMessage('리뷰 작성이 완료되었습니다.')
+      window.setTimeout(() => navigate(detailPath), 900)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setError('로그인이 필요합니다.')
+      } else {
+        setError('리뷰를 저장하지 못했습니다.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <main className="review-write-page" aria-label={`${exhibition.title} 후기 작성`}>
+    <main className="review-write-page" aria-label={`${exhibitionTitle} 후기 작성`}>
       <AppHeader />
 
       <section className="review-write-shell" aria-labelledby="review-write-title">
         <div className="review-write-intro">
           <span>Review</span>
           <h1 id="review-write-title">후기 작성</h1>
-          <p>{exhibition.title}</p>
+          <p>{exhibitionTitle}</p>
         </div>
 
         <form className="review-write-form" onSubmit={handleSubmit}>
@@ -89,6 +128,7 @@ function ReviewWrite() {
                   key={score}
                   onClick={() => setRating(score)}
                   role="radio"
+                  disabled={isSubmitting}
                   type="button"
                 >
                   <StarIcon />
@@ -104,9 +144,26 @@ function ReviewWrite() {
               onChange={(event) => {
                 setContent(event.target.value)
                 setError('')
+                setSuccessMessage('')
               }}
               placeholder="전시에서 인상 깊었던 작품, 공간, 관람 경험을 남겨주세요."
               value={content}
+              disabled={isSubmitting}
+            />
+          </label>
+
+          <label className="review-field">
+            <span>인증 이미지 URL</span>
+            <input
+              onChange={(event) => {
+                setVerificationImageUrl(event.target.value)
+                setError('')
+                setSuccessMessage('')
+              }}
+              placeholder="관람 인증 이미지 URL을 입력해주세요."
+              type="url"
+              value={verificationImageUrl}
+              disabled={isSubmitting}
             />
           </label>
 
@@ -115,7 +172,11 @@ function ReviewWrite() {
             <div className="visit-selects">
               <label>
                 <span>연도</span>
-                <select onChange={(event) => setVisitedYear(event.target.value)} value={visitedYear}>
+                <select
+                  onChange={(event) => setVisitedYear(event.target.value)}
+                  value={visitedYear}
+                  disabled={isSubmitting}
+                >
                   <option value="">선택</option>
                   {visitYears.map((year) => (
                     <option key={year} value={year}>
@@ -126,7 +187,11 @@ function ReviewWrite() {
               </label>
               <label>
                 <span>월</span>
-                <select onChange={(event) => setVisitedMonth(event.target.value)} value={visitedMonth}>
+                <select
+                  onChange={(event) => setVisitedMonth(event.target.value)}
+                  value={visitedMonth}
+                  disabled={isSubmitting}
+                >
                   <option value="">선택</option>
                   {visitMonths.map((month) => (
                     <option key={month} value={month}>
@@ -145,6 +210,7 @@ function ReviewWrite() {
                 checked={isPublic}
                 name="visibility"
                 onChange={() => setIsPublic(true)}
+                disabled={isSubmitting}
                 type="radio"
               />
               공개
@@ -154,6 +220,7 @@ function ReviewWrite() {
                 checked={!isPublic}
                 name="visibility"
                 onChange={() => setIsPublic(false)}
+                disabled={isSubmitting}
                 type="radio"
               />
               비공개
@@ -161,12 +228,18 @@ function ReviewWrite() {
           </fieldset>
 
           {error && <p className="review-error">{error}</p>}
+          {successMessage && <p className="review-success">{successMessage}</p>}
 
           <div className="review-write-actions">
-            <button className="review-submit" type="submit">
-              제출
+            <button className="review-submit" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? '제출 중' : '제출'}
             </button>
-            <button className="review-cancel" onClick={() => navigate(detailPath)} type="button">
+            <button
+              className="review-cancel"
+              onClick={() => navigate(detailPath)}
+              type="button"
+              disabled={isSubmitting}
+            >
               취소
             </button>
           </div>

@@ -4,9 +4,12 @@ import { createJsonHeaders, createUploadHeaders } from '../../../api/headers'
 import { ApiError } from './authApi'
 import type {
   ApiResponse,
+  DeleteMyAccountResponse,
   MyBookmark,
   MyProfile,
   MyReview,
+  UpdateNicknameResponse,
+  UpdateProfileImageResponse,
   UpdateNicknameRequest,
 } from '../types/myPageApi'
 
@@ -40,6 +43,19 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
   return result.data
 }
 
+async function parseOptionalApiResponse<T>(response: Response): Promise<T | undefined> {
+  if (response.status === 401) {
+    handleUnauthorized()
+    throw new ApiError('로그인이 필요합니다.', response.status)
+  }
+
+  if (response.status === 204) {
+    return undefined
+  }
+
+  return parseApiResponse<T>(response)
+}
+
 async function requestMyPage<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, init)
 
@@ -56,7 +72,7 @@ export function getMyProfile() {
 export function updateNickname(nickname: string) {
   const body: UpdateNicknameRequest = { nickname }
 
-  return requestMyPage<MyProfile>(`${MY_PAGE_API_PATH}/nickname`, {
+  return requestMyPage<UpdateNicknameResponse>(`${MY_PAGE_API_PATH}/nickname`, {
     method: 'PUT',
     headers: createJsonHeaders(),
     body: JSON.stringify(body),
@@ -67,7 +83,7 @@ export function updateProfileImage(file: File) {
   const formData = new FormData()
   formData.append('profileImage', file)
 
-  return requestMyPage<MyProfile>(`${MY_PAGE_API_PATH}/profile_image`, {
+  return requestMyPage<UpdateProfileImageResponse>(`${MY_PAGE_API_PATH}/profile_image`, {
     method: 'PUT',
     headers: createUploadHeaders(),
     body: formData,
@@ -86,4 +102,13 @@ export function getMyBookmarks() {
     method: 'GET',
     headers: createJsonHeaders(),
   })
+}
+
+export async function deleteMyAccount() {
+  const response = await fetch(`${API_BASE_URL}${MY_PAGE_API_PATH}`, {
+    method: 'DELETE',
+    headers: createJsonHeaders(),
+  })
+
+  return parseOptionalApiResponse<DeleteMyAccountResponse>(response)
 }

@@ -66,6 +66,26 @@
   margin-bottom: 46px;
 }
 
+.preferences-status {
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+  border: 1.5px solid #e8dece;
+  border-radius: 8px;
+  background: #fdf8f2;
+  color: #7c6c59;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.preferences-status.is-error {
+  border-color: #f0cbc3;
+  background: #fff8f6;
+  color: #b14337;
+}
+
 .section-title-row {
   display: flex;
   align-items: center;
@@ -417,6 +437,12 @@
   background: #d6b98f;
   box-shadow: 0 10px 22px rgba(163, 121, 76, 0.2);
   transform: translateY(-1px);
+}
+
+.preferences-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
 }
 
 .preferences-submit:active {

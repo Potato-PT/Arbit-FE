@@ -96,9 +96,11 @@ function MyPage() {
     setIsNicknameSaving(true)
 
     try {
-      const nextProfile = await updateNickname(nextNickname)
-      setProfile(nextProfile)
-      setNicknameInput(nextProfile.nickname)
+      const nextNicknameResponse = await updateNickname(nextNickname)
+      setProfile((currentProfile) =>
+        currentProfile ? { ...currentProfile, nickname: nextNicknameResponse.nickname } : currentProfile,
+      )
+      setNicknameInput(nextNicknameResponse.nickname)
       setIsEditingNickname(false)
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -137,9 +139,12 @@ function MyPage() {
     setIsProfileImageSaving(true)
 
     try {
-      const nextProfile = await updateProfileImage(file)
-      setProfile(nextProfile)
-      setNicknameInput(nextProfile.nickname)
+      const nextProfileImage = await updateProfileImage(file)
+      setProfile((currentProfile) =>
+        currentProfile
+          ? { ...currentProfile, profileImageUrl: nextProfileImage.profileImageUrl }
+          : currentProfile,
+      )
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         return
@@ -481,8 +486,8 @@ function FavoritesPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
       )}
 
       <div className="favorite-grid">
-        {bookmarks.map((item) => (
-          <FavoriteCard item={item} key={item.eventId} />
+        {bookmarks.map((item, index) => (
+          <FavoriteCard item={item} key={item.eventId ?? `${item.title}-${index}`} />
         ))}
       </div>
 
@@ -497,28 +502,40 @@ function FavoritesPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
 }
 
 function FavoriteCard({ item }: { item: MyBookmark }) {
+  const cardContent = (
+    <>
+      <div className="favorite-poster">
+        {item.posterImageUrl ? (
+          <img className="favorite-poster-image" src={item.posterImageUrl} alt="" />
+        ) : (
+          <span className="favorite-art" />
+        )}
+      </div>
+      <span className="favorite-category">{item.category}</span>
+      <h3>{item.title}</h3>
+      <p className="favorite-meta">
+        <CalendarIcon />
+        {formatDateRange(item.startDate, item.endDate)}
+      </p>
+      <p className="favorite-meta">
+        <PinIcon />
+        {item.venue}
+      </p>
+      <p className="favorite-meta">북마크: {formatDisplayDate(item.bookmarkedAt)}</p>
+    </>
+  )
+
   return (
     <article className="favorite-card">
-      <Link className="favorite-card-link" to={`/exhibitions/${item.eventId}`}>
-        <div className="favorite-poster">
-          {item.posterImageUrl ? (
-            <img className="favorite-poster-image" src={item.posterImageUrl} alt="" />
-          ) : (
-            <span className="favorite-art" />
-          )}
+      {item.eventId ? (
+        <Link className="favorite-card-link" to={`/exhibitions/${item.eventId}`}>
+          {cardContent}
+        </Link>
+      ) : (
+        <div className="favorite-card-link" aria-disabled="true">
+          {cardContent}
         </div>
-        <span className="favorite-category">{item.category}</span>
-        <h3>{item.title}</h3>
-        <p className="favorite-meta">
-          <CalendarIcon />
-          {formatDateRange(item.startDate, item.endDate)}
-        </p>
-        <p className="favorite-meta">
-          <PinIcon />
-          {item.venue}
-        </p>
-        <p className="favorite-meta">북마크: {formatDisplayDate(item.bookmarkedAt)}</p>
-      </Link>
+      )}
       <button
         aria-label={`${item.title} 북마크됨`}
         aria-pressed={true}
