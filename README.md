@@ -13,7 +13,8 @@ Arbit UI는 전시와 문화 행사를 탐색하고, 전시 상세와 리뷰를 
 - 후기 작성 화면에서 API로 리뷰를 등록합니다.
 - 홈과 전시 전체보기 화면에서 전시 북마크를 추가하거나 삭제합니다.
 - 로그인과 회원가입 성공 시 `accessToken`, `refreshToken`을 저장합니다.
-- 취향 선택 화면에서 API로 카테고리를 불러오고 선택 결과를 저장합니다.
+- 로그인 후 저장된 취향 선택 이력이 있으면 개인화 추천을 불러옵니다.
+- 취향 선택 화면에서 API로 이벤트 후보를 불러오고 4~5개 선택 결과를 저장합니다.
 - 마이페이지에서 프로필 조회, 닉네임 수정, 프로필 이미지 업로드, 내 리뷰 목록, 북마크 목록, 로그아웃을 사용할 수 있습니다.
 
 ## 시작하기
@@ -88,6 +89,8 @@ src/
   types/                # 홈 화면 타입
 ```
 
+전역 스타일은 `src/index.css`에서 관리합니다. Pretendard Variable을 jsDelivr에서 불러오고 `--font-sans` CSS 변수로 공통 sans-serif 글꼴 스택을 제공합니다. 화면별 CSS는 이 변수를 기본 글꼴로 사용하며 일부 제목은 별도의 serif 스타일을 유지합니다.
+
 ## API 연동
 
 API base URL은 `src/api/config.ts`의 설정을 사용합니다.
@@ -129,7 +132,9 @@ API base URL은 `src/api/config.ts`의 설정을 사용합니다.
 - `GET /api/users/me/reviews`
 - `GET /api/users/me/bookmarks`
 
-토큰이 필요한 요청은 `Authorization: Bearer {accessToken}` 헤더를 포함합니다. 파일 업로드 요청은 `FormData`를 사용하며 `Content-Type`을 직접 지정하지 않습니다. 마이페이지 계열, 리뷰 작성, 취향 저장, 북마크 추가/삭제 요청에서 401이 발생하면 저장된 인증 상태를 삭제하고 `/user/login`으로 이동합니다. 홈 추천 API는 로그인 사용자 전용이며, 취향 저장 API가 반환한 4~5개의 이벤트 ID를 사용자 아이디별 `localStorage` 캐시에 저장해 반복 `eventIds` query parameter로 전송합니다. 유효한 JWT 또는 현재 사용자의 저장된 이벤트 ID가 없으면 추천 API를 호출하지 않습니다.
+토큰이 필요한 요청은 `Authorization: Bearer {accessToken}` 헤더를 포함합니다. 파일 업로드 요청은 `FormData`를 사용하며 `Content-Type`을 직접 지정하지 않습니다. 마이페이지 계열, 리뷰 작성, 취향 저장, 북마크 추가/삭제 요청에서 401이 발생하면 저장된 인증 상태를 삭제하고 `/user/login`으로 이동합니다.
+
+취향 저장 요청은 선택한 이벤트 ID 배열을 `{ success: true, data: selectedEventIds, error: null }` 형태로 감싸서 전송합니다. 응답으로 받은 4~5개의 이벤트 ID는 사용자 아이디별 `localStorage` 캐시에 저장합니다. 홈 추천 API는 로그인 사용자 전용이며, 캐시된 ID를 반복 `eventIds` query parameter로 전송합니다. 유효한 JWT 또는 현재 사용자의 저장된 이벤트 ID가 없으면 추천 API를 호출하지 않습니다. 로그인 직후와 홈 화면의 로고 클릭 시에도 개인화 추천 조회를 시도합니다.
 
 ## 데이터 소스
 
@@ -137,10 +142,18 @@ API base URL은 `src/api/config.ts`의 설정을 사용합니다.
 
 홈은 `src/api/homeApi.ts`, 전시 탐색/상세/리뷰 작성은 `src/features/exhibitions/api/eventsApi.ts`, 북마크 추가/삭제는 `src/features/exhibitions/api/bookmarksApi.ts`, 취향 선택은 `src/features/user/api/preferencesApi.ts`, 마이페이지의 프로필/리뷰/북마크 목록은 `src/features/user/api/myPageApi.ts`의 API 함수를 통해 처리합니다.
 
+## 현재 구현 범위
+
+- 검색 화면의 거리순 정렬은 브라우저 위치 권한을 사용할 수 있으면 `lat`, `lng`를 함께 전송합니다.
+- 전시 전체보기의 `더 보기`는 이미 받은 목록을 화면에서 나누어 보여줍니다.
+- 검색 화면 카드의 하트와 `전시 더보기`, 로그인 화면의 `로그인 유지`와 `계정 찾기`, 마이페이지의 북마크 하트와 후기 공유 버튼은 현재 UI만 제공하며 별도 동작은 연결되어 있지 않습니다.
+- 후기 작성 API에는 `rating`, `content`, `verificationImageUrl`을 전송합니다. 방문 시점과 공개 여부는 현재 폼에서만 관리합니다.
+
 ## 개발 참고
 
 - 공통 화면 구조는 `src/components`의 `AppHeader`, `AppFooter`를 사용합니다.
 - 화면 스타일은 컴포넌트에서 직접 import하는 일반 CSS 파일로 관리합니다.
+- 기본 sans-serif 글꼴은 `src/index.css`의 `--font-sans` 변수를 사용합니다.
 - 기존 클래스명은 `home-*`, `detail-*`, `login-*`, `signup-*`, `preferences-*`, `mypage-*`처럼 화면 또는 기능 단위 prefix를 사용합니다.
 - 내부 페이지 이동에는 React Router의 `Link`를 사용합니다.
 - 코드 변경 후에는 `npm run lint`와 `npm run build`를 실행해 확인하는 것을 권장합니다.

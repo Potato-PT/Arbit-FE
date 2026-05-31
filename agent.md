@@ -19,6 +19,10 @@ Most user-facing copy is Korean. Keep new UI text consistent with the existing K
 
 There is no configured test runner, global state library, or component library.
 
+`src/index.css` imports Pretendard Variable from jsDelivr and exposes the shared
+`--font-sans` variable. Route styles use that variable for the default sans-serif
+stack. Keep serif display text overrides where they already exist.
+
 ## Commands
 
 Only use commands that exist in `package.json`.
@@ -91,6 +95,11 @@ Do not manually set `Content-Type` on file upload requests. Let the browser set 
 
 `getHomeRecommendations()` is for authenticated users. It sends a bearer token and 4-5 selected event IDs as repeated `eventIds` query parameters. After saving preferences, store the returned IDs through `saveRecommendationEventIds()`. The home page skips this request when there is no valid JWT or no stored recommendation event IDs.
 
+Login also attempts to load recommendations before navigating home. Clicking the
+home logo while already on the home route refreshes personalized recommendations
+instead of navigating. The home recommendation cards and all-exhibitions cards
+support bookmark mutations.
+
 ## Exhibition API
 
 `src/features/exhibitions/api/eventsApi.ts`
@@ -127,7 +136,11 @@ Login and signup store tokens through `useAuthStatus().setAuthTokens()`. Logout 
 - `getPreferenceCategories()`: `GET /api/preferences/categories`
 - `savePreferences(request)`: `POST /api/preferences`
 
-Only `savePreferences()` sends a bearer token. A 401 response clears auth storage and redirects to `/user/login`.
+Only `savePreferences()` sends a bearer token. It wraps the selected event ID
+array as `{ success: true, data: selectedEventIds, error: null }`. The screen
+requires 4-5 selected events and stores the IDs returned by the API for later
+home recommendation requests. A 401 response clears auth storage and redirects
+to `/user/login`.
 
 `src/features/user/api/myPageApi.ts`
 
@@ -155,9 +168,28 @@ My Page API response types live in:
 
 - `src/features/user/types/myPageApi.ts`
 
+## Current UI Boundaries
+
+Do not assume a visible control is already backed by behavior.
+
+- Search requests use browser geolocation for distance sorting when permission is
+  available. Search card hearts are display-only, and the search "전시 더보기"
+  button currently has no handler.
+- All-exhibitions "더 보기" paginates the already loaded API result in the
+  browser. It does not request another backend page.
+- The login "로그인 유지" checkbox and "계정 찾기" button are currently
+  presentation-only.
+- My Page bookmark hearts and review share buttons are currently
+  presentation-only.
+- Review writing sends `rating`, `content`, and `verificationImageUrl`.
+  `visitedYear`, `visitedMonth`, and public/private selection are validated or
+  displayed in the form but are not included in the API request.
+
 ## Styling Guidelines
 
 - Reuse existing CSS files and class naming patterns.
+- Use the shared `--font-sans` variable for default sans-serif text. Update
+  `src/index.css` if the project-wide font stack changes.
 - Shared shell UI should use `AppHeader` and `AppFooter`.
 - Avoid broad global CSS changes unless the task explicitly requires them.
 - Many posters and illustrations are CSS-drawn. If changing artwork keys or variant unions, update both TypeScript unions and the matching CSS selectors.
