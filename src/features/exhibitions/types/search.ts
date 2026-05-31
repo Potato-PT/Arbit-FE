@@ -8,6 +8,7 @@ export type SearchArtwork =
 
 export interface SearchExhibition {
   id: string
+  eventId?: string
   badge?: string
   category: string
   location: string

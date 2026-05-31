@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { genreFilters, seoulDistricts } from '../data/searchMock'
 import { searchEvents, type EventSearchSort, type EventSummary } from '../api/eventsApi'
 import type { SearchArtwork, SearchExhibition } from '../types/search'
 import '../styles/ExhibitionSearch.css'
@@ -13,6 +12,8 @@ type SortOption = '거리순' | '마감 임박순' | '예정순'
 const periodFilters = ['진행중', '예정'] as const
 const priceFilters = ['무료', '유료'] as const
 const sortOptions: SortOption[] = ['거리순', '마감 임박순', '예정순']
+const seoulDistricts = ['강남구', '마포구', '종로구', '성동구', '송파구', '용산구']
+const genreFilters = ['사진/영상', '회화', '미디어아트', '체험형']
 
 function ExhibitionSearch() {
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(['마포구'])
@@ -243,36 +244,48 @@ function ExhibitionSearch() {
 
           {!isLoading && !errorMessage && filteredExhibitions.length > 0 ? (
             <div className="result-grid">
-              {filteredExhibitions.map((item) => (
-                <Link className="result-card" key={item.id} to={`/exhibitions/${item.id}`}>
-                  <div className={`result-art result-art-${item.artwork}`}>
-                    {item.posterImageUrl ? <img src={item.posterImageUrl} alt="" /> : <span className="art-shape" />}
-                    {item.badge ? <span className="result-badge">{item.badge}</span> : null}
-                  </div>
-                  <div className="result-body">
-                    <p className="result-meta">
-                      {item.category} · {item.district}
-                    </p>
-                    <h2>{item.title}</h2>
-                    <p className="result-venue">
-                      {item.venue} · {item.period}
-                    </p>
-                    <div className="result-footer">
-                      <strong>{item.price}</strong>
-                      <span className="result-detail-meta">
-                        {formatDistanceAndRating(item.distanceKm, item.rating)}
-                      </span>
-                      <span
-                        className={item.liked ? 'result-heart is-liked' : 'result-heart'}
-                        aria-label={`${item.title} 찜하기`}
-                        role="img"
-                      >
-                        <HeartIcon filled={item.liked} />
-                      </span>
+              {filteredExhibitions.map((item, index) => {
+                const cardContent = (
+                  <>
+                    <div className={`result-art result-art-${item.artwork}`}>
+                      {item.posterImageUrl ? <img src={item.posterImageUrl} alt="" /> : <span className="art-shape" />}
+                      {item.badge ? <span className="result-badge">{item.badge}</span> : null}
                     </div>
+                    <div className="result-body">
+                      <p className="result-meta">
+                        {item.category} · {item.district}
+                      </p>
+                      <h2>{item.title}</h2>
+                      <p className="result-venue">
+                        {item.venue} · {item.period}
+                      </p>
+                      <div className="result-footer">
+                        <strong>{item.price}</strong>
+                        <span className="result-detail-meta">
+                          {formatDistanceAndRating(item.distanceKm, item.rating)}
+                        </span>
+                        <span
+                          className={item.liked ? 'result-heart is-liked' : 'result-heart'}
+                          aria-label={`${item.title} 찜하기`}
+                          role="img"
+                        >
+                          <HeartIcon filled={item.liked} />
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )
+
+                return item.eventId ? (
+                  <Link className="result-card" key={item.eventId} to={`/exhibitions/${item.eventId}`}>
+                    {cardContent}
+                  </Link>
+                ) : (
+                  <div className="result-card" key={`${item.title}-${index}`} aria-disabled="true">
+                    {cardContent}
                   </div>
-                </Link>
-              ))}
+                )
+              })}
             </div>
           ) : null}
 
@@ -325,14 +338,15 @@ function normalizeSearchEvent(item: EventSummary, index: number): SearchExhibiti
   period: string
   rating?: number
 } {
-  const id = String(item.eventId ?? item.id)
+  const eventId = item.eventId ? String(item.eventId) : undefined
   const startDate = item.startDate ?? ''
   const endDate = item.endDate ?? ''
   const district = item.district ?? item.location ?? ''
   const free = Boolean(item.free)
 
   return {
-    id,
+    id: eventId ?? '',
+    eventId,
     badge: item.status,
     category: item.category ?? '전시',
     location: item.location ?? district,

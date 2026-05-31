@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { allExhibitionsMock } from '../data/allExhibitionsMock'
+import { readAccessToken } from '../../../api/authStorage'
 import { getEvents, type EventSummary, type EventsSort } from '../api/eventsApi'
+import { ApiError } from '../../user/api/authApi'
+import { addBookmark, removeBookmark } from '../api/bookmarksApi'
 import type {
   AllExhibition,
   AllExhibitionPosterIcon,
@@ -17,10 +19,27 @@ type PeriodFilter = '진행중' | '예정'
 const sortOptions: SortOption[] = ['추천순', '마감 임박순', '최신순', '평점순']
 const periodFilters: PeriodFilter[] = ['진행중', '예정']
 const priceFilters: AllExhibitionPriceType[] = ['무료', '유료']
+const genreFilters = [
+  '전체',
+  '전시/미술',
+  '클래식',
+  '교육/체험',
+  '설치 예술',
+  '축제',
+  '연극',
+  '콘서트',
+  '국악',
+  '뮤지컬/오페라',
+  '무용',
+  '영화',
+  '기타',
+]
+const districts = ['종로구', '중구', '용산구', '성동구', '마포구', '서초구', '강남구', '강서구', '송파구']
+const initialDisplayCount = 10
+const pageSize = 12
 const dayInMs = 24 * 60 * 60 * 1000
 
 function AllExhibitions() {
-  const { districts, initialDisplayCount, pageSize, genreFilters } = allExhibitionsMock
   const [activeFilter, setActiveFilter] = useState('전체')
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([])
   const [selectedPeriods, setSelectedPeriods] = useState<PeriodFilter[]>([])
@@ -31,6 +50,7 @@ function AllExhibitions() {
   const [apiExhibitions, setApiExhibitions] = useState<EventSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
+  const [pendingBookmarkIds, setPendingBookmarkIds] = useState<Set<string>>(() => new Set())
   const nextCardRef = useRef<HTMLElement | null>(null)
 
   const visibleFilters = showMoreFilters ? genreFilters : genreFilters.slice(0, 4)
@@ -99,7 +119,7 @@ function AllExhibitions() {
     return () => {
       ignore = true
     }
-  }, [activeFilter, initialDisplayCount, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption])
+  }, [activeFilter, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption])
 
   const toggleDistrict = (district: string) => {
     setVisibleCount(initialDisplayCount)
@@ -128,6 +148,53 @@ function AllExhibitions() {
         nextCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     })
+  }
+
+  const handleBookmarkToggle = async (eventId: string, isBookmarked: boolean) => {
+    if (!eventId) {
+      window.alert('이벤트 정보를 찾을 수 없습니다.')
+      return
+    }
+
+    if (!readAccessToken()) {
+      window.alert('로그인이 필요합니다.')
+      return
+    }
+
+    setPendingBookmarkIds((current) => new Set(current).add(eventId))
+
+    try {
+      if (isBookmarked) {
+        await removeBookmark(eventId)
+      } else {
+        await addBookmark(eventId)
+      }
+
+      setApiExhibitions((current) => updateEventBookmark(current, eventId, !isBookmarked))
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setApiExhibitions((current) => updateEventBookmark(current, eventId, true))
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 404) {
+        window.alert('이벤트 정보를 찾을 수 없습니다.')
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 401) {
+        window.alert('로그인이 필요합니다.')
+        return
+      }
+
+      window.alert('북마크 처리 중 오류가 발생했습니다.')
+    } finally {
+      setPendingBookmarkIds((current) => {
+        const next = new Set(current)
+        next.delete(eventId)
+        return next
+      })
+    }
   }
 
   return (
@@ -286,50 +353,69 @@ function AllExhibitions() {
               <div className="all-grid">
                 {visibleExhibitions.map((item, index) => {
                   const isBookmarked = Boolean(item.bookmarked)
+                  const isBookmarkPending = item.eventId ? pendingBookmarkIds.has(item.eventId) : false
+                  const isBookmarkDisabled = !item.eventId || isBookmarkPending
+                  const cardContent = (
+                    <>
+                      <div className={`all-poster poster-${item.icon}`}>
+                        {item.posterImageUrl ? (
+                          <img src={item.posterImageUrl} alt="" />
+                        ) : (
+                          <PosterIcon type={item.icon} />
+                        )}
+                        <span className={`all-badge ${getBadgeClassName(item, today)}`}>
+                          {item.status || getAvailabilityLabel(item, today)}
+                        </span>
+                      </div>
+                      <div className="all-card-body">
+                        <p className="all-meta">
+                          <CalendarIcon />
+                          {item.period}
+                        </p>
+                        <p className="all-meta">
+                          <PinIcon />
+                          {item.district} · {item.venue}
+                        </p>
+                        <h3>{item.title}</h3>
+                        <div className="all-card-foot">
+                          <div className="all-card-tags">
+                            <span className="all-category-chip">{item.category}</span>
+                            <span className="all-price-chip">{item.priceType}</span>
+                          </div>
+                          <span className="all-card-distance">
+                            {formatDistanceAndRating(item.distanceKm, item.rating)}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )
 
                   return (
                     <article
                       className="all-card"
-                      key={item.id}
+                      key={item.id || `${item.title}-${index}`}
                       ref={index === visibleCount - pageSize ? nextCardRef : null}
                     >
-                      <Link className="all-card-link" to={`/exhibitions/${item.id}`}>
-                        <div className={`all-poster poster-${item.icon}`}>
-                          {item.posterImageUrl ? (
-                            <img src={item.posterImageUrl} alt="" />
-                          ) : (
-                            <PosterIcon type={item.icon} />
-                          )}
-                          <span className={`all-badge ${getBadgeClassName(item, today)}`}>
-                            {item.status || getAvailabilityLabel(item, today)}
-                          </span>
+                      {item.eventId ? (
+                        <Link className="all-card-link" to={`/exhibitions/${item.eventId}`}>
+                          {cardContent}
+                        </Link>
+                      ) : (
+                        <div className="all-card-link" aria-disabled="true">
+                          {cardContent}
                         </div>
-                        <div className="all-card-body">
-                          <p className="all-meta">
-                            <CalendarIcon />
-                            {item.period}
-                          </p>
-                          <p className="all-meta">
-                            <PinIcon />
-                            {item.district} · {item.venue}
-                          </p>
-                          <h3>{item.title}</h3>
-                          <div className="all-card-foot">
-                            <div className="all-card-tags">
-                              <span className="all-category-chip">{item.category}</span>
-                              <span className="all-price-chip">{item.priceType}</span>
-                            </div>
-                            <span className="all-card-distance">
-                              {formatDistanceAndRating(item.distanceKm, item.rating)}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
+                      )}
                       <button
                         className={isBookmarked ? 'all-heart is-liked' : 'all-heart'}
                         type="button"
                         aria-label={isBookmarked ? `${item.title} 즐겨찾기 해제` : `${item.title} 즐겨찾기 추가`}
                         aria-pressed={isBookmarked}
+                        disabled={isBookmarkDisabled}
+                        onClick={() => {
+                          if (item.eventId) {
+                            void handleBookmarkToggle(item.eventId, isBookmarked)
+                          }
+                        }}
                       >
                         <HeartIcon filled={isBookmarked} />
                       </button>
@@ -356,6 +442,12 @@ function AllExhibitions() {
       <AppFooter />
     </main>
   )
+}
+
+function updateEventBookmark(events: EventSummary[], eventId: string, bookmarked: boolean) {
+  return events.map((item) => {
+    return item.eventId === eventId ? { ...item, bookmarked } : item
+  })
 }
 
 function toggleListValue<T>(values: T[], value: T) {
@@ -446,13 +538,14 @@ function normalizeEventSummary(item: EventSummary, index: number): AllExhibition
   rating?: number
   bookmarked?: boolean
 } {
-  const id = String(item.eventId ?? item.id)
+  const eventId = item.eventId ? String(item.eventId) : undefined
   const startDate = item.startDate ?? ''
   const endDate = item.endDate ?? ''
   const district = item.district ?? item.location ?? ''
 
   return {
-    id,
+    id: eventId ?? '',
+    eventId,
     title: item.title ?? '제목 없는 전시',
     category: item.category ?? '전시',
     venue: item.venue ?? '',

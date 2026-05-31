@@ -64,11 +64,30 @@ export async function getHome() {
     method: 'GET',
   })
 
-  return parseHomeResponse<HomeResponse>(response)
+  const result = await parseHomeResponse<HomeResponse>(response)
+
+  if (Array.isArray(result) || !Array.isArray(result.events)) {
+    throw new ApiError('홈 이벤트 응답 형식이 올바르지 않습니다.', response.status)
+  }
+
+  return result
 }
 
-export async function getHomeRecommendations() {
-  const response = await fetch(`${API_BASE_URL}${HOME_API_PATH}/recommendations`, {
+export async function getHomeRecommendations(eventIds?: number[]) {
+  const validEventIds = [...new Set(eventIds?.filter(Number.isFinite))]
+
+  if (validEventIds.length < 4 || validEventIds.length > 5) {
+    return getHome()
+  }
+
+  const params = new URLSearchParams()
+
+  validEventIds.forEach((eventId) => {
+    params.append('eventIds', String(eventId))
+  })
+
+  const queryString = params.size > 0 ? `?${params.toString()}` : ''
+  const response = await fetch(`${API_BASE_URL}${HOME_API_PATH}/recommendations${queryString}`, {
     method: 'GET',
     headers: createAuthorizationHeaders(),
   })
@@ -77,5 +96,11 @@ export async function getHomeRecommendations() {
     return getHome()
   }
 
-  return parseHomeResponse<HomeResponse>(response)
+  const result = await parseHomeResponse<HomeResponse>(response)
+
+  if (!Array.isArray(result)) {
+    throw new ApiError('홈 추천 이벤트 응답 형식이 올바르지 않습니다.', response.status)
+  }
+
+  return result
 }

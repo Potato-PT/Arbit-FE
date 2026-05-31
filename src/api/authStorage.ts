@@ -37,8 +37,31 @@ export function saveAuthTokens({ accessToken, refreshToken }: AuthTokenResponse)
     return
   }
 
-  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken)
-  window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
+  const normalizedAccessToken = normalizeJwt(accessToken, 'access token')
+  const normalizedRefreshToken = normalizeJwt(refreshToken, 'refresh token')
+
+  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, normalizedAccessToken)
+  window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, normalizedRefreshToken)
+}
+
+function normalizeJwt(token: unknown, label: string) {
+  if (typeof token !== 'string') {
+    throw new Error(`Invalid ${label}`)
+  }
+
+  const normalizedToken = token.trim()
+
+  if (!isJwtLike(normalizedToken)) {
+    throw new Error(`Invalid ${label}`)
+  }
+
+  return normalizedToken
+}
+
+export function isJwtLike(token: string) {
+  const segments = token.split('.')
+
+  return segments.length === 3 && segments.every(Boolean)
 }
 
 export function clearAuthStorage() {

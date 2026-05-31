@@ -2,11 +2,12 @@ export type ExhibitionArtwork = 'hero' | 'portal' | 'tree' | 'glass' | 'media'
 
 export interface Exhibition {
   id: string
+  eventId?: string
   dday: string
   category: string
   title: string
   period: string
-  venue: string
+  venue?: string
   artwork: ExhibitionArtwork
   liked: boolean
   posterImageUrl?: string
@@ -16,6 +17,10 @@ export interface Exhibition {
   status?: string
   matchScore?: number
   bookmarked?: boolean
+  matchRate?: number
+  subtitle?: string
+  homepageUrl?: string
+  url?: string
 }
 
 export interface HeroExhibition extends Exhibition {

@@ -14,6 +14,7 @@ export type AllExhibitionPosterIcon =
 
 export interface AllExhibition {
   id: string
+  eventId?: string
   title: string
   category: string
   venue: string
@@ -25,14 +26,4 @@ export interface AllExhibition {
   priceType: AllExhibitionPriceType
   distanceKm: number
   icon: AllExhibitionPosterIcon
-}
-
-export interface AllExhibitionsPageData {
-  exhibitions: AllExhibition[]
-  genreFilters: string[]
-  districts: string[]
-  totalCount: number
-  initialDisplayCount: number
-  pageSize: number
-  initiallyLikedIds: string[]
 }

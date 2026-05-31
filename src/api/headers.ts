@@ -1,4 +1,4 @@
-import { readAccessToken } from './authStorage'
+import { isJwtLike, readAccessToken } from './authStorage'
 
 function readFallbackAccessToken() {
   if (typeof window === 'undefined') {
@@ -15,7 +15,7 @@ export function getAccessTokenForApi() {
 export function createAuthorizationHeaders(): Record<string, string> {
   const accessToken = getAccessTokenForApi().trim()
 
-  if (!accessToken) {
+  if (!accessToken || !isJwtLike(accessToken)) {
     return {}
   }
 

@@ -317,6 +317,11 @@
   text-decoration: none;
 }
 
+.review-write-link.is-disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
 .review-heading svg {
   width: 20px;
   height: 20px;
@@ -326,6 +331,22 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 30px;
+}
+
+.review-state {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #eee8e2;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #6a5d4f;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.review-state.is-error {
+  color: #9c332c;
 }
 
 .review-card {
@@ -343,6 +364,15 @@
 .review-rating {
   margin-bottom: 20px;
   font-size: 15px;
+}
+
+.review-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin-bottom: 22px;
+  border-radius: 12px;
+  background: #eee8e2;
 }
 
 .review-card p {

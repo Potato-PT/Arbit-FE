@@ -3,19 +3,28 @@ import { Link, useParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import { ApiError } from '../../user/api/authApi'
-import { getEventDetail, type EventDetail, type EventReview } from '../api/eventsApi'
+import {
+  getEventDetail,
+  getEventReviews,
+  type EventDetail,
+  type EventReviewListItem,
+} from '../api/eventsApi'
 import '../styles/ExhibitionDetail.css'
 
 function ExhibitionDetail() {
   const { id } = useParams()
+  const eventId = id
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null)
+  const [eventReviews, setEventReviews] = useState<EventReviewListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
+  const [reviewsErrorMessage, setReviewsErrorMessage] = useState('')
   const [isNotFound, setIsNotFound] = useState(false)
   const exhibition = useMemo(
     () => (eventDetail ? normalizeEventDetail(eventDetail) : null),
     [eventDetail],
   )
+  const reviews = useMemo(() => eventReviews.map(normalizeReview), [eventReviews])
 
   useEffect(() => {
     let ignore = false
@@ -23,13 +32,36 @@ function ExhibitionDetail() {
     async function loadEventDetail(eventId: string) {
       setIsLoading(true)
       setErrorMessage('')
+      setReviewsErrorMessage('')
       setIsNotFound(false)
 
       try {
-        const nextEventDetail = await getEventDetail(eventId)
+        const [detailResult, reviewsResult] = await Promise.allSettled([
+          getEventDetail(eventId),
+          getEventReviews(eventId),
+        ])
+
+        if (detailResult.status === 'rejected') {
+          throw detailResult.reason
+        }
+
+        if (
+          reviewsResult.status === 'rejected' &&
+          reviewsResult.reason instanceof ApiError &&
+          reviewsResult.reason.status === 404
+        ) {
+          throw reviewsResult.reason
+        }
 
         if (!ignore) {
-          setEventDetail(nextEventDetail)
+          setEventDetail(detailResult.value)
+
+          if (reviewsResult.status === 'fulfilled') {
+            setEventReviews(reviewsResult.value)
+          } else {
+            setEventReviews([])
+            setReviewsErrorMessage('리뷰 목록을 불러오지 못했습니다.')
+          }
         }
       } catch (error) {
         if (ignore) {
@@ -37,6 +69,7 @@ function ExhibitionDetail() {
         }
 
         setEventDetail(null)
+        setEventReviews([])
 
         if (error instanceof ApiError && error.status === 404) {
           setIsNotFound(true)
@@ -50,8 +83,8 @@ function ExhibitionDetail() {
       }
     }
 
-    if (id) {
-      void loadEventDetail(id)
+    if (eventId) {
+      void loadEventDetail(eventId)
     } else {
       setIsLoading(false)
       setIsNotFound(true)
@@ -60,7 +93,7 @@ function ExhibitionDetail() {
     return () => {
       ignore = true
     }
-  }, [id])
+  }, [eventId])
 
   if (isLoading) {
     return (
@@ -167,32 +200,52 @@ function ExhibitionDetail() {
       <section className="review-section" aria-labelledby="review-title">
         <div className="review-heading">
           <h2 id="review-title">관람객 경험</h2>
-          <Link to={`/exhibitions/${exhibition.id}/review`} className="review-write-link">
-            후기 작성
-            <PencilIcon />
-          </Link>
+          {eventId ? (
+            <Link to={`/exhibitions/${eventId}/review`} className="review-write-link">
+              후기 작성
+              <PencilIcon />
+            </Link>
+          ) : (
+            <span className="review-write-link is-disabled" aria-disabled="true">
+              후기 작성
+              <PencilIcon />
+            </span>
+          )}
         </div>
-        <div className="review-grid">
-          {exhibition.reviews.map((review) => (
-            <article className="review-card" key={review.id}>
-              <div className="review-rating" aria-label={`별점 ${review.rating}`}>
-                {'★'.repeat(review.rating)}
-                {'☆'.repeat(5 - review.rating)}
-              </div>
-              <p>{review.content}</p>
-              <div className="reviewer">
-                <span className={`avatar avatar-${review.tone}`} />
-                <div>
-                  <strong>
-                    {review.author}
-                    {!review.isPublic && <span className="private-review-badge">비공개</span>}
-                  </strong>
-                  <small>{review.visitedAt}</small>
+
+        {reviewsErrorMessage && (
+          <div className="review-state is-error" role="alert">
+            {reviewsErrorMessage}
+          </div>
+        )}
+
+        {!reviewsErrorMessage && reviews.length === 0 && (
+          <div className="review-state">아직 작성된 리뷰가 없습니다.</div>
+        )}
+
+        {!reviewsErrorMessage && reviews.length > 0 && (
+          <div className="review-grid">
+            {reviews.map((review) => (
+              <article className="review-card" key={review.id}>
+                <div className="review-rating" aria-label={`별점 ${review.rating}`}>
+                  {'★'.repeat(review.rating)}
+                  {'☆'.repeat(5 - review.rating)}
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+                {review.verificationImageUrl && (
+                  <img className="review-image" src={review.verificationImageUrl} alt="" />
+                )}
+                <p>{review.content}</p>
+                <div className="reviewer">
+                  <span className={`avatar avatar-${review.tone}`} />
+                  <div>
+                    <strong>관람객 리뷰</strong>
+                    <small>{review.createdAt}</small>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <AppFooter />
@@ -201,13 +254,12 @@ function ExhibitionDetail() {
 }
 
 function normalizeEventDetail(item: EventDetail) {
-  const id = String(item.eventId ?? item.id)
+  const id = item.eventId ?? ''
   const startDate = item.startDate ?? ''
   const endDate = item.endDate ?? ''
-  const tags = item.tag ?? item.tags ?? []
+  const tags = item.keyword ?? []
   const rating = item.rating ?? 0
-  const fee = item.fee ?? item.price ?? (item.free ? '무료' : '유료')
-  const reviews = item.reviews ?? []
+  const fee = item.price ?? (item.free ? '무료' : '유료')
 
   return {
     id,
@@ -227,21 +279,19 @@ function normalizeEventDetail(item: EventDetail) {
     status: item.status ?? '',
     rating,
     bookmarked: Boolean(item.bookmarked),
-    reviews: reviews.map(normalizeReview),
   }
 }
 
-function normalizeReview(review: EventReview, index: number) {
-  const rating = review.rating ?? review.starScore ?? 0
+function normalizeReview(review: EventReviewListItem, index: number) {
+  const rating = review.rating ?? 0
 
   return {
-    id: String(review.reviewId ?? review.id ?? index),
+    id: String(review.id ?? index),
     rating: Math.max(0, Math.min(5, Math.round(rating))),
     content: review.content ?? '',
-    author: review.author ?? review.nickname ?? '익명',
-    visitedAt: review.visitedAt ?? review.createdAt ?? '',
+    verificationImageUrl: review.verificationImageUrl ?? '',
+    createdAt: formatReviewDate(review.createdAt),
     tone: (['warm', 'soft', 'blush'] as const)[index % 3],
-    isPublic: review.isPublic ?? review.public ?? true,
   }
 }
 
@@ -251,6 +301,26 @@ function formatPeriod(startDate: string, endDate: string) {
 
 function formatDate(value: string) {
   return value.replaceAll('-', '.')
+}
+
+function formatReviewDate(value: string) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value.replace('T', ' ').slice(0, 16)
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 function PinIcon() {

@@ -1,23 +1,25 @@
-import { useMemo, useState, type ComponentProps } from 'react'
+import { useEffect, useMemo, useState, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import { readAccessToken } from '../../../api/authStorage'
 import { ApiError } from '../../user/api/authApi'
-import { createEventReview } from '../api/eventsApi'
-import { getExhibitionDetail } from '../data/exhibitionDetails'
+import { createEventReview, getEventDetail } from '../api/eventsApi'
 import '../styles/ReviewWrite.css'
 
 type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
 
 const visitYears = ['2026', '2025', '2024', '2023', '2022']
 const visitMonths = Array.from({ length: 12 }, (_, index) => String(index + 1))
+const MIN_REVIEW_RATING = 1
+const MAX_REVIEW_RATING = 5
+const MAX_REVIEW_CONTENT_LENGTH = 200
+const MAX_VERIFICATION_IMAGE_URL_LENGTH = 500
 
 function ReviewWrite() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const exhibition = getExhibitionDetail(id)
-  const exhibitionTitle = exhibition?.title ?? '이벤트'
+  const [exhibitionTitle, setExhibitionTitle] = useState('이벤트')
   const [rating, setRating] = useState(5)
   const [content, setContent] = useState('')
   const [verificationImageUrl, setVerificationImageUrl] = useState('')
@@ -35,6 +37,35 @@ function ReviewWrite() {
 
     return `${visitedYear}년 ${Number(visitedMonth)}월 방문`
   }, [visitedMonth, visitedYear])
+
+  useEffect(() => {
+    if (!id) {
+      return
+    }
+
+    const eventId = id
+    let ignore = false
+
+    async function loadExhibitionTitle() {
+      try {
+        const exhibition = await getEventDetail(eventId)
+
+        if (!ignore && exhibition.title) {
+          setExhibitionTitle(exhibition.title)
+        }
+      } catch {
+        if (!ignore) {
+          setExhibitionTitle('이벤트')
+        }
+      }
+    }
+
+    void loadExhibitionTitle()
+
+    return () => {
+      ignore = true
+    }
+  }, [id])
 
   if (!id) {
     return (
@@ -64,20 +95,29 @@ function ReviewWrite() {
       return
     }
 
-    if (!content.trim()) {
-      setError('후기 내용을 입력해 주세요.')
+    if (rating < MIN_REVIEW_RATING || rating > MAX_REVIEW_RATING) {
+      setError('평점 또는 리뷰 내용을 확인해주세요.')
+      setSuccessMessage('')
+      return
+    }
+
+    const trimmedContent = content.trim()
+    const trimmedVerificationImageUrl = verificationImageUrl.trim()
+
+    if (!trimmedContent || trimmedContent.length > MAX_REVIEW_CONTENT_LENGTH) {
+      setError('평점 또는 리뷰 내용을 확인해주세요.')
+      setSuccessMessage('')
+      return
+    }
+
+    if (trimmedVerificationImageUrl.length > MAX_VERIFICATION_IMAGE_URL_LENGTH) {
+      setError('인증 이미지 URL은 최대 500자까지 입력할 수 있습니다.')
       setSuccessMessage('')
       return
     }
 
     if (!formattedVisit) {
       setError('방문 시점을 선택해 주세요.')
-      setSuccessMessage('')
-      return
-    }
-
-    if (!verificationImageUrl.trim()) {
-      setError('인증 이미지 URL을 입력해 주세요.')
       setSuccessMessage('')
       return
     }
@@ -89,17 +129,35 @@ function ReviewWrite() {
     try {
       await createEventReview(exhibitionId, {
         rating,
-        content: content.trim(),
-        verificationImageUrl: verificationImageUrl.trim(),
+        content: trimmedContent,
+        verificationImageUrl: trimmedVerificationImageUrl,
       })
       setSuccessMessage('리뷰 작성이 완료되었습니다.')
       window.setTimeout(() => navigate(detailPath), 900)
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        setError('로그인이 필요합니다.')
-      } else {
-        setError('리뷰를 저장하지 못했습니다.')
+      if (error instanceof ApiError) {
+        if (error.status === 400) {
+          setError('평점 또는 리뷰 내용을 확인해주세요.')
+          return
+        }
+
+        if (error.status === 401) {
+          setError('로그인이 필요합니다.')
+          return
+        }
+
+        if (error.status === 404) {
+          setError('이벤트를 찾을 수 없습니다.')
+          return
+        }
+
+        if (error.status === 409) {
+          setError('이미 이 이벤트에 리뷰를 작성했습니다.')
+          return
+        }
       }
+
+      setError('리뷰를 저장하지 못했습니다.')
     } finally {
       setIsSubmitting(false)
     }
@@ -138,9 +196,9 @@ function ReviewWrite() {
           </fieldset>
 
           <label className="review-field">
-            <span>후기 본문</span>
+            <span>후기 본문 ({content.length}/{MAX_REVIEW_CONTENT_LENGTH})</span>
             <textarea
-              maxLength={600}
+              maxLength={MAX_REVIEW_CONTENT_LENGTH}
               onChange={(event) => {
                 setContent(event.target.value)
                 setError('')
@@ -155,6 +213,7 @@ function ReviewWrite() {
           <label className="review-field">
             <span>인증 이미지 URL</span>
             <input
+              maxLength={MAX_VERIFICATION_IMAGE_URL_LENGTH}
               onChange={(event) => {
                 setVerificationImageUrl(event.target.value)
                 setError('')

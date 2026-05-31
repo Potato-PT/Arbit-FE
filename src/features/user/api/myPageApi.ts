@@ -49,7 +49,15 @@ async function parseOptionalApiResponse<T>(response: Response): Promise<T | unde
     throw new ApiError('로그인이 필요합니다.', response.status)
   }
 
+  if (response.status === 404) {
+    throw new ApiError('사용자 정보를 찾을 수 없습니다.', response.status)
+  }
+
   if (response.status === 204) {
+    return undefined
+  }
+
+  if (response.ok && response.headers.get('content-length') === '0') {
     return undefined
   }
 

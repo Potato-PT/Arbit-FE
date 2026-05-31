@@ -309,6 +309,10 @@
   text-decoration: none;
 }
 
+.all-card-link[aria-disabled="true"] {
+  cursor: default;
+}
+
 .all-poster {
   position: relative;
   aspect-ratio: 3 / 4;

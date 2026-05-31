@@ -302,6 +302,10 @@
   text-decoration: none;
 }
 
+.result-card[aria-disabled="true"] {
+  cursor: default;
+}
+
 .result-art {
   position: relative;
   height: 220px;

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import './styles/Home.css'
-import { heroExhibition, recommendedExhibitions } from './data/homeMock'
-import { useFavoriteExhibitions } from './hooks/useFavoriteExhibitions'
 import AppHeader from './components/AppHeader'
 import AppFooter from './components/AppFooter'
 import { getHome, getHomeRecommendations } from './api/homeApi'
 import { readAccessToken } from './api/authStorage'
+import { ApiError } from './features/user/api/authApi'
+import { addBookmark, removeBookmark } from './features/exhibitions/api/bookmarksApi'
 import type { ExhibitionArtwork, HeroExhibition, HomeResponse, RecommendedExhibition } from './types/home'
 
 function HeartIcon({ filled = false }: { filled?: boolean }) {
@@ -18,15 +18,18 @@ function HeartIcon({ filled = false }: { filled?: boolean }) {
 }
 
 function App() {
+  const location = useLocation()
+  const recommendationEventIds = useMemo(
+    () => getRecommendationEventIds(location.state),
+    [location.state],
+  )
   const [homeData, setHomeData] = useState<HomeResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
-  const { favoriteIdSet, toggleFavorite } = useFavoriteExhibitions()
+  const [pendingBookmarkIds, setPendingBookmarkIds] = useState<Set<string>>(() => new Set())
   const normalizedHome = useMemo(() => normalizeHomeData(homeData), [homeData])
   const currentHeroExhibition = normalizedHome.heroExhibition
   const currentRecommendedExhibitions = normalizedHome.recommendedExhibitions
-  const heroDetailPath = `/exhibitions/${currentHeroExhibition.id}`
-  const heroMatchScore = currentHeroExhibition.matchScore ?? currentHeroExhibition.matchRate
 
   useEffect(() => {
     let ignore = false
@@ -36,7 +39,12 @@ function App() {
       setErrorMessage('')
 
       try {
-        const nextHomeData = readAccessToken() ? await getHomeRecommendations() : await getHome()
+        const nextHomeData = recommendationEventIds && readAccessToken()
+          ? mergeHomeRecommendations(
+              await getHome(),
+              await getHomeRecommendations(recommendationEventIds),
+            )
+          : await getHome()
 
         if (!ignore) {
           setHomeData(nextHomeData)
@@ -58,43 +66,98 @@ function App() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [recommendationEventIds])
+
+  const handleBookmarkToggle = async (item: RecommendedExhibition, isBookmarked: boolean) => {
+    const eventId = item.eventId
+
+    if (!eventId) {
+      window.alert('이벤트 정보를 찾을 수 없습니다.')
+      return
+    }
+
+    if (!readAccessToken()) {
+      window.alert('로그인이 필요합니다.')
+      return
+    }
+
+    setPendingBookmarkIds((current) => new Set(current).add(eventId))
+
+    try {
+      if (isBookmarked) {
+        await removeBookmark(eventId)
+      } else {
+        await addBookmark(eventId)
+      }
+
+      setHomeData((current) => updateHomeBookmark(current, eventId, !isBookmarked))
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setHomeData((current) => updateHomeBookmark(current, eventId, true))
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 404) {
+        window.alert('이벤트 정보를 찾을 수 없습니다.')
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 401) {
+        window.alert('로그인이 필요합니다.')
+        return
+      }
+
+      window.alert('북마크 처리 중 오류가 발생했습니다.')
+    } finally {
+      setPendingBookmarkIds((current) => {
+        const next = new Set(current)
+        next.delete(eventId)
+        return next
+      })
+    }
+  }
 
   return (
     <main className="home-page" aria-label="Arbit home">
       <AppHeader variant="home" />
 
-      <section className="hero" aria-labelledby="hero-title">
-        <div className="hero-scene" aria-hidden="true">
-          <div className="window window-left" />
-          <div className="window window-right" />
-          <div className="painting" />
-          <div className="sculptures">
-            <span className="sculpture bronze-one" />
-            <span className="sculpture bronze-two" />
-            <span className="sculpture black-one" />
+      {currentHeroExhibition && (
+        <section className="hero" aria-labelledby="hero-title">
+          <div className="hero-scene" aria-hidden="true">
+            <div className="window window-left" />
+            <div className="window window-right" />
+            <div className="painting" />
+            <div className="sculptures">
+              <span className="sculpture bronze-one" />
+              <span className="sculpture bronze-two" />
+              <span className="sculpture black-one" />
+            </div>
           </div>
-        </div>
-        <div className="hero-shade" />
-        <div className="hero-copy">
-          <span className="match-badge">
-            <HeartIcon filled />
-            {heroMatchScore}% Match
-          </span>
-          <h1 id="hero-title">
-            {currentHeroExhibition.title}
-            <span>: {currentHeroExhibition.subtitle}</span>
-          </h1>
-          <div className="hero-buttons">
-            <a href={currentHeroExhibition.homepageUrl} className="primary-link">
-              홈페이지 바로가기
-            </a>
-            <Link to={heroDetailPath} className="ghost-link">
-              자세히 보기
-            </Link>
+          <div className="hero-shade" />
+          <div className="hero-copy">
+            <h1 id="hero-title">
+              {currentHeroExhibition.title}
+              {currentHeroExhibition.subtitle && <span>: {currentHeroExhibition.subtitle}</span>}
+            </h1>
+            <div className="hero-buttons">
+              {currentHeroExhibition.homepageUrl && currentHeroExhibition.homepageUrl !== '#' && (
+                <a href={currentHeroExhibition.homepageUrl} className="primary-link">
+                  홈페이지 바로가기
+                </a>
+              )}
+              {currentHeroExhibition.eventId ? (
+                <Link to={`/exhibitions/${currentHeroExhibition.eventId}`} className="ghost-link">
+                  자세히 보기
+                </Link>
+              ) : (
+                <span className="ghost-link is-disabled" aria-disabled="true">
+                  자세히 보기
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="recommendations" aria-labelledby="recommend-title">
         <div className="section-heading">
@@ -130,31 +193,45 @@ function App() {
         {!isLoading && !errorMessage && currentRecommendedExhibitions.length > 0 && (
           <div className="card-grid">
             {currentRecommendedExhibitions.map((item) => {
-              const isFavorite = item.bookmarked ?? (item.liked || favoriteIdSet.has(item.id))
+              const isFavorite = item.bookmarked ?? item.liked
+              const isBookmarkPending = item.eventId ? pendingBookmarkIds.has(item.eventId) : false
+              const isBookmarkDisabled = !item.eventId || isBookmarkPending
+              const cardContent = (
+                <>
+                  <div className={`poster poster-${item.artwork}`}>
+                    {item.posterImageUrl ? <img src={item.posterImageUrl} alt="" /> : <span className="poster-art" />}
+                    <span className={`dday ${item.status ? '' : 'muted'}`}>{item.status ?? item.dday}</span>
+                    {typeof item.matchScore === 'number' && (
+                      <span className="card-match-badge">{item.matchScore}% Match</span>
+                    )}
+                  </div>
+                  <span className="category">
+                    {item.category}
+                    {typeof item.free === 'boolean' ? ` · ${item.free ? '무료' : '유료'}` : ''}
+                  </span>
+                  <h3>{item.title}</h3>
+                  <p className="meta calendar">{item.period}</p>
+                  <p className="meta pin">{item.venue}</p>
+                </>
+              )
 
               return (
-                <article className="exhibition-card" key={item.id}>
-                  <Link className="exhibition-card-link" to={`/exhibitions/${item.id}`}>
-                    <div className={`poster poster-${item.artwork}`}>
-                      {item.posterImageUrl ? <img src={item.posterImageUrl} alt="" /> : <span className="poster-art" />}
-                      <span className={`dday ${item.status ? '' : 'muted'}`}>{item.status ?? item.dday}</span>
-                      {typeof item.matchScore === 'number' && (
-                        <span className="card-match-badge">{item.matchScore}% Match</span>
-                      )}
+                <article className="exhibition-card" key={item.id || item.title}>
+                  {item.eventId ? (
+                    <Link className="exhibition-card-link" to={`/exhibitions/${item.eventId}`}>
+                      {cardContent}
+                    </Link>
+                  ) : (
+                    <div className="exhibition-card-link" aria-disabled="true">
+                      {cardContent}
                     </div>
-                    <span className="category">
-                      {item.category}
-                      {typeof item.free === 'boolean' ? ` · ${item.free ? '무료' : '유료'}` : ''}
-                    </span>
-                    <h3>{item.title}</h3>
-                    <p className="meta calendar">{item.period}</p>
-                    <p className="meta pin">{item.venue}</p>
-                  </Link>
+                  )}
                   <button
                     aria-label={isFavorite ? `${item.title} 즐겨찾기 해제` : `${item.title} 즐겨찾기 추가`}
                     aria-pressed={isFavorite}
                     className="heart-button"
-                    onClick={() => toggleFavorite(item.id)}
+                    disabled={isBookmarkDisabled}
+                    onClick={() => void handleBookmarkToggle(item, isFavorite)}
                     type="button"
                   >
                     <HeartIcon filled={isFavorite} />
@@ -171,46 +248,120 @@ function App() {
   )
 }
 
-function normalizeHomeData(data: HomeResponse | null) {
-  if (Array.isArray(data)) {
-    return {
-      heroExhibition,
-      recommendedExhibitions: data.map(normalizeRecommendedExhibition),
-    }
+function getRecommendationEventIds(state: unknown) {
+  if (
+    typeof state !== 'object' ||
+    state === null ||
+    !('recommendationEventIds' in state) ||
+    !Array.isArray(state.recommendationEventIds)
+  ) {
+    return undefined
   }
 
-  const hero = data?.heroExhibition ?? data?.hero ?? heroExhibition
-  const recommendations =
-    data?.recommendedExhibitions ?? data?.recommendations ?? data?.events ?? recommendedExhibitions
+  const eventIds = [...new Set(state.recommendationEventIds.filter(
+    (eventId): eventId is number => typeof eventId === 'number' && Number.isFinite(eventId),
+  ))]
+
+  return eventIds.length >= 4 && eventIds.length <= 5 ? eventIds : undefined
+}
+
+function updateHomeBookmark(data: HomeResponse | null, eventId: string, bookmarked: boolean): HomeResponse | null {
+  if (!data) {
+    return data
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => updateRecommendedBookmark(item, eventId, bookmarked))
+  }
 
   return {
-    heroExhibition: normalizeHeroExhibition(hero),
-    recommendedExhibitions: recommendations.map(normalizeRecommendedExhibition),
+    ...data,
+    heroExhibition: data.heroExhibition
+      ? updateRecommendedBookmark(data.heroExhibition, eventId, bookmarked)
+      : data.heroExhibition,
+    hero: data.hero ? updateRecommendedBookmark(data.hero, eventId, bookmarked) : data.hero,
+    recommendedExhibitions: data.recommendedExhibitions?.map((item) =>
+      updateRecommendedBookmark(item, eventId, bookmarked),
+    ),
+    recommendations: data.recommendations?.map((item) =>
+      updateRecommendedBookmark(item, eventId, bookmarked),
+    ),
+    events: data.events?.map((item) => updateRecommendedBookmark(item, eventId, bookmarked)),
   }
 }
 
-function normalizeHeroExhibition(item: HeroExhibition): HeroExhibition {
+function mergeHomeRecommendations(home: HomeResponse, recommendations: HomeResponse): HomeResponse {
+  if (!Array.isArray(recommendations)) {
+    return recommendations
+  }
+
+  return {
+    ...(Array.isArray(home) ? { events: home } : home),
+    recommendedExhibitions: recommendations,
+  }
+}
+
+function updateRecommendedBookmark<T extends RecommendedExhibition>(
+  item: T,
+  eventId: string,
+  bookmarked: boolean,
+): T {
+  return item.eventId === eventId ? { ...item, bookmarked, liked: bookmarked } : item
+}
+
+function normalizeHomeData(data: HomeResponse | null) {
+  if (Array.isArray(data)) {
+    return {
+      heroExhibition: null,
+      recommendedExhibitions: data.map((item, index) =>
+        normalizeRecommendedExhibition(item, index),
+      ),
+    }
+  }
+
+  const events = data?.events ?? []
+  const hero = data?.heroExhibition ?? data?.hero ?? events[0] ?? null
+  const recommendationEvents = data?.recommendedExhibitions ?? data?.recommendations
+  const recommendations = recommendationEvents ?? events
+
+  return {
+    heroExhibition: hero ? normalizeHeroExhibition(hero) : null,
+    recommendedExhibitions: recommendations.map((item, index) =>
+      normalizeRecommendedExhibition(item, index, Boolean(recommendationEvents)),
+    ),
+  }
+}
+
+function normalizeHeroExhibition(item: RecommendedExhibition): HeroExhibition {
   const normalizedItem = normalizeRecommendedExhibition(item)
-  const matchRate = item.matchScore ?? item.matchRate ?? heroExhibition.matchRate
+  const matchRate = item.matchScore ?? item.matchRate ?? 0
 
   return {
     ...normalizedItem,
     matchRate,
-    subtitle: item.subtitle ?? item.category ?? heroExhibition.subtitle,
-    homepageUrl: item.homepageUrl ?? '#',
+    subtitle: item.subtitle ?? item.category ?? '',
+    homepageUrl: item.homepageUrl ?? item.url ?? '#',
   }
 }
 
 function normalizeRecommendedExhibition(
   item: RecommendedExhibition,
   index = 0,
+  includeMatchScore = false,
 ): RecommendedExhibition {
   const startDate = item.startDate
   const endDate = item.endDate
+  const matchScore =
+    includeMatchScore &&
+    typeof item.matchScore === 'number' &&
+    Number.isFinite(item.matchScore)
+      ? item.matchScore
+      : undefined
 
   return {
     ...item,
-    id: String(item.id),
+    id: item.id === undefined || item.id === null ? '' : String(item.id),
+    eventId: item.eventId ? String(item.eventId) : undefined,
     dday: item.dday ?? item.status ?? '',
     category: item.category ?? '전시',
     title: item.title ?? '제목 없는 이벤트',
@@ -218,6 +369,7 @@ function normalizeRecommendedExhibition(
     venue: item.venue ?? '',
     artwork: item.artwork ?? getFallbackArtwork(index),
     liked: item.bookmarked ?? item.liked ?? false,
+    matchScore,
   }
 }
 

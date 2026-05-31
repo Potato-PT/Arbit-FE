@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { type MyPageTab } from '../data/myPageMock'
+import { clearAuthStorage } from '../../../api/authStorage'
 import {
+  deleteMyAccount,
   getMyBookmarks,
   getMyProfile,
   getMyReviews,
@@ -18,6 +19,8 @@ import type {
 } from '../types/myPageApi'
 import '../styles/MyPage.css'
 
+type MyPageTab = 'favorites' | 'reviews' | 'preferences'
+
 const tabs: { id: MyPageTab; label: string }[] = [
   { id: 'favorites', label: '즐겨찾기' },
   { id: 'reviews', label: '나의 후기' },
@@ -25,6 +28,7 @@ const tabs: { id: MyPageTab; label: string }[] = [
 ]
 
 function MyPage() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<MyPageTab>('favorites')
   const [profile, setProfile] = useState<MyProfile | null>(null)
   const [isProfileLoading, setIsProfileLoading] = useState(true)
@@ -35,6 +39,8 @@ function MyPage() {
   const [isNicknameSaving, setIsNicknameSaving] = useState(false)
   const [profileImageError, setProfileImageError] = useState('')
   const [isProfileImageSaving, setIsProfileImageSaving] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState('')
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const profileImageInputRef = useRef<HTMLInputElement>(null)
   const tasteKeywords = profile?.tasteKeywords ?? []
 
@@ -70,6 +76,15 @@ function MyPage() {
     }
   }, [])
 
+  const refreshProfile = async () => {
+    const nextProfile = await getMyProfile()
+
+    setProfile(nextProfile)
+    setNicknameInput(nextProfile.nickname)
+
+    return nextProfile
+  }
+
   const handleStartNicknameEdit = () => {
     setNicknameInput(profile?.nickname ?? '')
     setNicknameError('')
@@ -97,10 +112,17 @@ function MyPage() {
 
     try {
       const nextNicknameResponse = await updateNickname(nextNickname)
-      setProfile((currentProfile) =>
-        currentProfile ? { ...currentProfile, nickname: nextNicknameResponse.nickname } : currentProfile,
-      )
-      setNicknameInput(nextNicknameResponse.nickname)
+      const updatedNickname = nextNicknameResponse?.nickname
+
+      if (updatedNickname) {
+        setProfile((currentProfile) =>
+          currentProfile ? { ...currentProfile, nickname: updatedNickname } : currentProfile,
+        )
+        setNicknameInput(updatedNickname)
+      } else {
+        await refreshProfile()
+      }
+
       setIsEditingNickname(false)
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -140,11 +162,17 @@ function MyPage() {
 
     try {
       const nextProfileImage = await updateProfileImage(file)
-      setProfile((currentProfile) =>
-        currentProfile
-          ? { ...currentProfile, profileImageUrl: nextProfileImage.profileImageUrl }
-          : currentProfile,
-      )
+      const updatedProfileImageUrl = nextProfileImage?.profileImageUrl
+
+      if (updatedProfileImageUrl) {
+        setProfile((currentProfile) =>
+          currentProfile
+            ? { ...currentProfile, profileImageUrl: updatedProfileImageUrl }
+            : currentProfile,
+        )
+      } else {
+        await refreshProfile()
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         return
@@ -153,6 +181,41 @@ function MyPage() {
       setProfileImageError('프로필 이미지 변경 중 오류가 발생했습니다.')
     } finally {
       setIsProfileImageSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount) {
+      return
+    }
+
+    const confirmed = window.confirm('정말 회원 탈퇴를 진행하시겠습니까? 저장된 계정 정보가 삭제됩니다.')
+
+    if (!confirmed) {
+      return
+    }
+
+    setDeleteAccountError('')
+    setIsDeletingAccount(true)
+
+    try {
+      await deleteMyAccount()
+      clearAuthStorage()
+      navigate('/user/login', { replace: true })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearAuthStorage()
+        navigate('/user/login', { replace: true })
+        return
+      }
+
+      setDeleteAccountError(
+        error instanceof ApiError && error.status === 404
+          ? '사용자 정보를 찾을 수 없습니다.'
+          : '회원 탈퇴 중 오류가 발생했습니다.',
+      )
+    } finally {
+      setIsDeletingAccount(false)
     }
   }
 
@@ -246,6 +309,21 @@ function MyPage() {
               {profileImageError}
             </p>
           )}
+          <div className="account-danger-zone">
+            <button
+              className="account-delete-button"
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={isProfileLoading || isDeletingAccount}
+            >
+              {isDeletingAccount ? '탈퇴 처리 중' : '회원 탈퇴'}
+            </button>
+            {deleteAccountError && (
+              <p className="profile-error" role="alert">
+                {deleteAccountError}
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
@@ -521,6 +599,7 @@ function FavoriteCard({ item }: { item: MyBookmark }) {
         <PinIcon />
         {item.venue}
       </p>
+      {item.price && <p className="favorite-meta">가격: {item.price}</p>}
       <p className="favorite-meta">북마크: {formatDisplayDate(item.bookmarkedAt)}</p>
     </>
   )
@@ -534,6 +613,7 @@ function FavoriteCard({ item }: { item: MyBookmark }) {
       ) : (
         <div className="favorite-card-link" aria-disabled="true">
           {cardContent}
+          <p className="favorite-meta">상세 이동에 필요한 이벤트 ID가 없습니다.</p>
         </div>
       )}
       <button

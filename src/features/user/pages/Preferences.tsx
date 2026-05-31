@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
@@ -6,74 +6,29 @@ import { ApiError } from '../api/authApi'
 import {
   getPreferenceCategories,
   savePreferences,
-  type PreferenceCategory,
-  type PreferenceDetailOption,
+  type PreferenceSeedEvent,
 } from '../api/preferencesApi'
-import {
-  preferenceMediaCategories,
-} from '../data/preferenceCategories'
 import '../styles/Preferences.css'
 
-type Option = {
-  id: string
-  label: string
-}
-
-const moodOptions: Option[] = [
-  { id: 'healing-emotional', label: '힐링/감성' },
-  { id: 'lively-active', label: '신나는/활기찬' },
-  { id: 'moving-grand', label: '감동/웅장' },
-  { id: 'traditional-cultural', label: '전통/문화' },
-  { id: 'family-friendly', label: '가족친화' },
-  { id: 'academic-reflective', label: '학술/사색적' },
-]
-
-const audienceOptions: Option[] = [
-  { id: 'kids-family', label: '아동/가족' },
-  { id: 'teen', label: '청소년' },
-  { id: 'adult', label: '일반 성인' },
-  { id: 'all', label: '전 연령' },
-  { id: 'senior', label: '태그 없음' },
-]
-
-const mediaEnglishLabels: Record<string, string> = {
-  'art-exhibition': 'Exhibition / Art',
-  'classic-recital': 'Classical',
-  'education-experience': 'Education',
-  festival: 'Festival',
-  theater: 'Theatre',
-  concert: 'Concert',
-  'korean-traditional-music': 'Korean Traditional',
-  'musical-opera': 'Musical / Opera',
-  dance: 'Dance',
-  film: 'Film',
-  other: 'Others',
-}
-
-const mediaStampLabels: Record<string, string> = {
-  'classic-recital': '클래식·독주',
-  'musical-opera': '뮤지컬/오페라',
-}
+const MIN_SELECTED_EVENT_COUNT = 4
+const MAX_SELECTED_EVENT_COUNT = 5
+const VISIBLE_EVENT_COUNT = 3
+const FILM_HOLE_COUNT = 10
 
 function Preferences() {
   const navigate = useNavigate()
-  const [mediaCategories, setMediaCategories] = useState<PreferenceCategory[]>(preferenceMediaCategories)
-  const defaultMediaId = mediaCategories[0]?.id ?? ''
-  const [selectedMediaId, setSelectedMediaId] = useState(defaultMediaId)
-  const [selectedDetailIdsByMedia, setSelectedDetailIdsByMedia] = useState<Record<string, string[]>>({
-    [defaultMediaId]: [preferenceMediaCategories[0]?.details[0]?.id ?? ''].filter(Boolean),
-  })
-  const [selectedMoods, setSelectedMoods] = useState<string[]>(['healing-emotional'])
-  const [selectedAudiences, setSelectedAudiences] = useState<string[]>(['adult'])
-  const [freeText, setFreeText] = useState('')
+  const [seedEvents, setSeedEvents] = useState<PreferenceSeedEvent[]>([])
+  const [selectedEventIds, setSelectedEventIds] = useState<number[]>([])
+  const [failedImageIds, setFailedImageIds] = useState<number[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoadingCategories, setIsLoadingCategories] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const selectedMediaCategory =
-    mediaCategories.find((category) => category.id === selectedMediaId) ??
-    mediaCategories[0]
-  const detailOptions = selectedMediaCategory?.details ?? []
-  const selectedDetails = selectedDetailIdsByMedia[selectedMediaId] ?? []
+  const maxStartIndex = Math.max(0, seedEvents.length - VISIBLE_EVENT_COUNT)
+  const selectedEvents = useMemo(
+    () => seedEvents.filter((seedEvent) => selectedEventIds.includes(seedEvent.event_id)),
+    [seedEvents, selectedEventIds],
+  )
 
   useEffect(() => {
     let ignore = false
@@ -83,19 +38,18 @@ function Preferences() {
       setErrorMessage('')
 
       try {
-        const response = await getPreferenceCategories()
-        const nextCategories = normalizePreferenceCategories(response)
+        const nextSeedEvents = await getPreferenceCategories()
 
         if (!ignore) {
-          setMediaCategories(nextCategories.length > 0 ? nextCategories : preferenceMediaCategories)
-          initializeSelections(nextCategories.length > 0 ? nextCategories : preferenceMediaCategories)
+          setSeedEvents(nextSeedEvents)
         }
       } catch (error) {
         if (!ignore) {
+          setSeedEvents([])
           setErrorMessage(
             error instanceof ApiError && error.status === 401
               ? '로그인이 필요합니다.'
-              : '취향 선택 옵션을 불러오지 못했습니다.',
+              : '취향 선택 이벤트를 불러오지 못했습니다.',
           )
         }
       } finally {
@@ -112,81 +66,30 @@ function Preferences() {
     }
   }, [])
 
-  const initializeSelections = (categories: PreferenceCategory[]) => {
-    const nextDefaultMediaId = categories[0]?.id ?? ''
-    const nextDefaultDetailId = categories[0]?.details?.[0]?.id ?? ''
+  useEffect(() => {
+    setCurrentIndex((index) => Math.min(index, maxStartIndex))
+  }, [maxStartIndex])
 
-    setSelectedMediaId(nextDefaultMediaId)
-    setSelectedDetailIdsByMedia({
-      [nextDefaultMediaId]: nextDefaultDetailId ? [nextDefaultDetailId] : [],
+  const toggleSeedEvent = (eventId: number) => {
+    setSelectedEventIds((currentEventIds) => {
+      if (currentEventIds.includes(eventId)) {
+        return currentEventIds.filter((selectedEventId) => selectedEventId !== eventId)
+      }
+
+      return currentEventIds.length < MAX_SELECTED_EVENT_COUNT
+        ? [...currentEventIds, eventId]
+        : currentEventIds
     })
   }
 
-  const toggleSelection = (
-    id: string,
-    selected: string[],
-    setSelected: (nextSelected: string[]) => void,
-  ) => {
-    setSelected(
-      selected.includes(id)
-        ? selected.filter((selectedId) => selectedId !== id)
-        : [...selected, id],
+  const handleImageError = (eventId: number) => {
+    setFailedImageIds((currentIds) =>
+      currentIds.includes(eventId) ? currentIds : [...currentIds, eventId],
     )
   }
 
-  const toggleAll = (
-    options: Option[],
-    selected: string[],
-    setSelected: (nextSelected: string[]) => void,
-  ) => {
-    setSelected(selected.length === options.length ? [] : options.map((option) => option.id))
-  }
-
-  const toggleDetailSelection = (id: string) => {
-    setSelectedDetailIdsByMedia((currentSelections) => {
-      const currentSelectedDetails = currentSelections[selectedMediaId] ?? []
-      const nextSelectedDetails = currentSelectedDetails.includes(id)
-        ? currentSelectedDetails.filter((selectedId) => selectedId !== id)
-        : [...currentSelectedDetails, id]
-
-      return {
-        ...currentSelections,
-        [selectedMediaId]: nextSelectedDetails,
-      }
-    })
-  }
-
-  const toggleAllDetails = () => {
-    setSelectedDetailIdsByMedia((currentSelections) => {
-      const currentSelectedDetails = currentSelections[selectedMediaId] ?? []
-      const nextSelectedDetails =
-        currentSelectedDetails.length === detailOptions.length
-          ? []
-          : detailOptions.map((option) => option.id)
-
-      return {
-        ...currentSelections,
-        [selectedMediaId]: nextSelectedDetails,
-      }
-    })
-  }
-
   const handleSubmit = async () => {
-    if (isSubmitting) {
-      return
-    }
-
-    const request = createSavePreferencesRequest({
-      mediaCategories,
-      selectedMediaId,
-      selectedDetails,
-      selectedMoods,
-      selectedAudiences,
-      freeText,
-    })
-
-    if (Object.values(request).some((keyword) => !keyword.trim())) {
-      setErrorMessage('선택한 취향 정보를 확인해주세요.')
+    if (isSubmitting || selectedEventIds.length < MIN_SELECTED_EVENT_COUNT) {
       return
     }
 
@@ -194,11 +97,11 @@ function Preferences() {
     setErrorMessage('')
 
     try {
-      await savePreferences(request)
-      navigate('/')
+      await savePreferences(selectedEventIds)
+      navigate('/', { state: { recommendationEventIds: selectedEventIds } })
     } catch (error) {
       if (error instanceof ApiError && error.status === 400) {
-        setErrorMessage('선택한 취향 정보를 확인해주세요.')
+        setErrorMessage(error.message)
       } else if (error instanceof ApiError && error.status === 401) {
         setErrorMessage('로그인이 필요합니다.')
       } else {
@@ -214,114 +117,203 @@ function Preferences() {
       <AppHeader variant="warm" />
 
       <div className="preferences-shell">
+        <div className="preferences-progress" aria-label="회원가입 진행 단계">
+          <span className="is-active" />
+          <span className="is-active" />
+          <span />
+        </div>
+
         <section className="preferences-hero" aria-labelledby="preferences-title">
           <span className="preferences-overline">Curating Your Vision</span>
           <h1 id="preferences-title">
-            당신의 취향을
+            마음에 드는 전시·공연을
             <br />
-            <em>선택하세요.</em>
+            <em>골라주세요.</em>
           </h1>
           <p>
-            Arbit는 당신만의 예술적 감수성을 이해하고자 합니다.
+            예전에 관람했거나, 아직 관람하지 않았지만 마음에 드는 작품을 선택해 주세요.
             <br />
-            선택하신 취향을 바탕으로 깊은 영감을 드릴 전시와 공연을 큐레이션해 드립니다.
+            관심 있는 전시·공연을 4~5개 선택하면 맞춤 추천을 준비해 드립니다.
           </p>
         </section>
 
         {isLoadingCategories ? (
-          <div className="preferences-status" role="status">
-            취향 선택 옵션을 불러오는 중입니다.
-          </div>
+          <PreferencesStatus>취향 선택 이벤트를 불러오는 중입니다.</PreferencesStatus>
         ) : (
           <>
-            {errorMessage && (
-              <div className="preferences-status is-error" role="alert">
-                {errorMessage}
-              </div>
+            {errorMessage && <PreferencesStatus isError>{errorMessage}</PreferencesStatus>}
+
+            {!errorMessage && seedEvents.length === 0 && (
+              <PreferencesStatus>선택 가능한 이벤트가 없습니다.</PreferencesStatus>
             )}
 
-            <section className="preferences-section" aria-labelledby="media-title">
-              <SectionHeader number="01" title="매체 선택" note="하나만 선택 가능" titleId="media-title" />
-              <div className="media-scroll" aria-label="매체 옵션">
-                {mediaCategories.map((option) => {
-                  const isSelected = selectedMediaId === option.id
+            {seedEvents.length > 0 && (
+              <section className="preferences-selection" aria-labelledby="seed-events-title">
+                <div className="preferences-section-header">
+                  <h2 id="seed-events-title">
+                    <span>02</span>
+                    전시·공연 선택
+                  </h2>
+                  <p>
+                    <strong>{selectedEventIds.length}</strong> / {MAX_SELECTED_EVENT_COUNT} 선택됨
+                  </p>
+                </div>
 
-                  return (
-                    <button
-                      className={isSelected ? 'media-card is-selected' : 'media-card'}
-                      type="button"
-                      aria-pressed={isSelected}
-                      key={option.id}
-                      onClick={() => setSelectedMediaId(option.id)}
-                    >
-                      <span className="stamp-en">{mediaEnglishLabels[option.id] ?? option.label}</span>
-                      <span className="stamp-overlay" aria-hidden="true">
-                        <span className="stamp-mark">
-                          <span className="stamp-mark-top">Selected</span>
-                          <span className="stamp-mark-star">* * *</span>
-                          <span className="stamp-mark-bottom">
-                            {mediaStampLabels[option.id] ?? option.label}
-                          </span>
+                <div className="preferences-film-viewer">
+                  <button
+                    className="preferences-film-arrow is-left"
+                    type="button"
+                    aria-label="이전 이벤트 보기"
+                    disabled={currentIndex === 0}
+                    onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    className="preferences-film-arrow is-right"
+                    type="button"
+                    aria-label="다음 이벤트 보기"
+                    disabled={currentIndex === maxStartIndex}
+                    onClick={() => setCurrentIndex((index) => Math.min(maxStartIndex, index + 1))}
+                  >
+                    ›
+                  </button>
+
+                  <div className="preferences-film-outer">
+                    <FilmHoles position="top" />
+                    <div className="preferences-film-viewport">
+                      <div
+                        className="preferences-film-track"
+                        style={{ transform: `translateX(-${currentIndex * (100 / VISIBLE_EVENT_COUNT)}%)` }}
+                      >
+                        {seedEvents.map((seedEvent, index) => {
+                          const isSelected = selectedEventIds.includes(seedEvent.event_id)
+                          const isDisabled =
+                            !isSelected && selectedEventIds.length >= MAX_SELECTED_EVENT_COUNT
+                          const hasPoster =
+                            Boolean(seedEvent.posterImage) &&
+                            !failedImageIds.includes(seedEvent.event_id)
+
+                          return (
+                            <button
+                              className={[
+                                'preferences-film-frame',
+                                isSelected ? 'is-selected' : '',
+                                isDisabled ? 'is-dimmed' : '',
+                              ].filter(Boolean).join(' ')}
+                              type="button"
+                              aria-pressed={isSelected}
+                              disabled={isDisabled}
+                              key={seedEvent.event_id}
+                              onClick={() => toggleSeedEvent(seedEvent.event_id)}
+                            >
+                              <span className="preferences-frame-poster">
+                                {hasPoster ? (
+                                  <img
+                                    src={seedEvent.posterImage}
+                                    alt=""
+                                    onError={() => handleImageError(seedEvent.event_id)}
+                                  />
+                                ) : (
+                                  <span className="preferences-frame-placeholder">
+                                    <span aria-hidden="true">◇</span>
+                                    <small>Poster</small>
+                                  </span>
+                                )}
+                              </span>
+                              <span className="preferences-frame-badge" aria-hidden="true">✦</span>
+                              <span className="preferences-frame-meta">
+                                <small>{String(index + 1).padStart(3, '0')}</small>
+                                <strong>{seedEvent.title}</strong>
+                                <em>{seedEvent.genre}</em>
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <FilmHoles position="bottom" />
+                  </div>
+                </div>
+
+                <div className="preferences-film-index" aria-label="이벤트 목록 위치">
+                  {Array.from({ length: maxStartIndex + 1 }, (_, index) => {
+                    const hasSelectedEvent = seedEvents
+                      .slice(index, index + VISIBLE_EVENT_COUNT)
+                      .some((seedEvent) => selectedEventIds.includes(seedEvent.event_id))
+
+                    return (
+                      <button
+                        className={[
+                          'preferences-film-dot',
+                          index === currentIndex ? 'is-active' : '',
+                          hasSelectedEvent ? 'has-selection' : '',
+                        ].filter(Boolean).join(' ')}
+                        type="button"
+                        aria-label={`${index + 1}번째 이벤트 묶음 보기`}
+                        aria-current={index === currentIndex ? 'true' : undefined}
+                        key={index}
+                        onClick={() => setCurrentIndex(index)}
+                      />
+                    )
+                  })}
+                </div>
+
+                <div className="preferences-counter-bar">
+                  <span>내 컬렉션</span>
+                  <div>
+                    {Array.from({ length: MAX_SELECTED_EVENT_COUNT }, (_, index) => (
+                      <i
+                        className={index < selectedEventIds.length ? 'is-filled' : ''}
+                        aria-hidden="true"
+                        key={index}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {selectedEvents.length > 0 && (
+                  <div className="preferences-summary">
+                    <h3>선택한 전시·공연</h3>
+                    <div>
+                      {selectedEvents.map((seedEvent) => (
+                        <span key={seedEvent.event_id}>
+                          {seedEvent.title}
+                          <button
+                            type="button"
+                            title={`${seedEvent.title} 제거`}
+                            aria-label={`${seedEvent.title} 제거`}
+                            onClick={() => toggleSeedEvent(seedEvent.event_id)}
+                          >
+                            ×
+                          </button>
                         </span>
-                      </span>
-                      <span className="stamp-ko">{option.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
-
-            <PreferenceGroup
-              number="02"
-              title="세부 매체 선택"
-              options={detailOptions}
-              selected={selectedDetails}
-              onToggle={toggleDetailSelection}
-              onToggleAll={toggleAllDetails}
-              chipClassName="detail-chip"
-            />
-
-            <PreferenceGroup
-              number="03"
-              title="무드 선택"
-              options={moodOptions}
-              selected={selectedMoods}
-              onToggle={(id) => toggleSelection(id, selectedMoods, setSelectedMoods)}
-              onToggleAll={() => toggleAll(moodOptions, selectedMoods, setSelectedMoods)}
-            />
-
-            <PreferenceGroup
-              number="04"
-              title="관람자 선택"
-              options={audienceOptions}
-              selected={selectedAudiences}
-              onToggle={(id) => toggleSelection(id, selectedAudiences, setSelectedAudiences)}
-              onToggleAll={() => toggleAll(audienceOptions, selectedAudiences, setSelectedAudiences)}
-            />
-
-            <section className="preferences-section freeform-section" aria-labelledby="freeform-title">
-              <SectionHeader number="05" title="직접 입력" titleId="freeform-title" />
-              <textarea
-                value={freeText}
-                onChange={(event) => setFreeText(event.target.value)}
-                placeholder="예: 베를린 감성의 현대 전시, 실험적인 사운드 아트 등"
-                aria-label="직접 입력"
-              />
-              <p className="input-hint">원하시는 분위기나 특별한 취향을 자유롭게 입력해주세요.</p>
-            </section>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
 
-        <div className="cta-wrap">
+        <div className="preferences-cta">
           <button
-            className="preferences-submit"
             type="button"
-            disabled={isLoadingCategories || isSubmitting}
+            disabled={
+              isLoadingCategories ||
+              isSubmitting ||
+              selectedEventIds.length < MIN_SELECTED_EVENT_COUNT
+            }
             onClick={handleSubmit}
           >
-            {isSubmitting ? '저장 중' : '회원가입 완료하기'}
+            {isSubmitting ? '저장 중' : '선택 완료'}
           </button>
-          <p>취향 정보는 언제든 수정할 수 있습니다</p>
+          <p>
+            {selectedEventIds.length < MIN_SELECTED_EVENT_COUNT
+              ? `관심 있는 전시·공연을 4~5개 선택해주세요. 현재 ${selectedEventIds.length}개 선택했습니다.`
+              : '취향 정보는 언제든 수정할 수 있습니다'}
+          </p>
         </div>
       </div>
       <AppFooter />
@@ -329,119 +321,25 @@ function Preferences() {
   )
 }
 
-function normalizePreferenceCategories(
-  response: Awaited<ReturnType<typeof getPreferenceCategories>>,
-): PreferenceCategory[] {
-  return Array.isArray(response) ? response : response.categories
-}
-
-function createSavePreferencesRequest({
-  mediaCategories,
-  selectedMediaId,
-  selectedDetails,
-  selectedMoods,
-  selectedAudiences,
-  freeText,
-}: {
-  mediaCategories: PreferenceCategory[]
-  selectedMediaId: string
-  selectedDetails: string[]
-  selectedMoods: string[]
-  selectedAudiences: string[]
-  freeText: string
-}) {
-  const selectedMediaCategory = mediaCategories.find((category) => category.id === selectedMediaId)
-  const detailLabels = mapOptionLabels(selectedMediaCategory?.details ?? [], selectedDetails)
-  const moodLabels = mapOptionLabels(moodOptions, selectedMoods)
-  const audienceLabels = mapOptionLabels(audienceOptions, selectedAudiences)
-  const keyword4Values = [...audienceLabels, freeText.trim()].filter(Boolean)
-
-  return {
-    keyword1: selectedMediaCategory?.label ?? selectedMediaId,
-    keyword2: detailLabels.join(', '),
-    keyword3: moodLabels.join(', '),
-    keyword4: keyword4Values.join(', '),
-  }
-}
-
-function mapOptionLabels(options: Option[] | PreferenceDetailOption[], selectedIds: string[]) {
-  return selectedIds.map((id) => options.find((option) => option.id === id)?.label ?? id)
-}
-
-function SectionHeader({
-  number,
-  title,
-  note,
-  titleId,
-}: {
-  number: string
-  title: string
-  note?: string
-  titleId: string
-}) {
+function FilmHoles({ position }: { position: 'top' | 'bottom' }) {
   return (
-    <div className="section-title-row">
-      <h2 id={titleId}>
-        <span>{number}</span>
-        {title}
-      </h2>
-      {note && <span className="section-note">{note}</span>}
+    <div className={`preferences-film-holes is-${position}`} aria-hidden="true">
+      {Array.from({ length: FILM_HOLE_COUNT }, (_, index) => <span key={index} />)}
     </div>
   )
 }
 
-function PreferenceGroup({
-  number,
-  title,
-  options,
-  selected,
-  onToggle,
-  onToggleAll,
-  chipClassName = '',
+function PreferencesStatus({
+  children,
+  isError = false,
 }: {
-  number: string
-  title: string
-  options: Option[] | PreferenceDetailOption[]
-  selected: string[]
-  onToggle: (id: string) => void
-  onToggleAll: () => void
-  chipClassName?: string
+  children: string
+  isError?: boolean
 }) {
-  const titleId = `${title}-title`
-
   return (
-    <section className="preferences-section" aria-labelledby={titleId}>
-      <div className="section-title-row">
-        <h2 id={titleId}>
-          <span>{number}</span>
-          {title}
-        </h2>
-        <button type="button" onClick={onToggleAll}>
-          전체 선택
-        </button>
-      </div>
-      <div className="chip-list">
-        {options.map((option) => {
-          const isSelected = selected.includes(option.id)
-
-          return (
-            <button
-              className={[
-                'preference-chip',
-                chipClassName,
-                isSelected ? 'is-selected' : '',
-              ].filter(Boolean).join(' ')}
-              type="button"
-              aria-pressed={isSelected}
-              key={option.id}
-              onClick={() => onToggle(option.id)}
-            >
-              {option.label}
-            </button>
-          )
-        })}
-      </div>
-    </section>
+    <div className={isError ? 'preferences-status is-error' : 'preferences-status'} role={isError ? 'alert' : 'status'}>
+      {children}
+    </div>
   )
 }
 

@@ -154,6 +154,31 @@
   color: #b3483b;
 }
 
+.account-danger-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.account-delete-button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #efd1cb;
+  border-radius: 999px;
+  background: #fff8f6;
+  color: #b3483b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.account-delete-button:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
 .nickname-form {
   display: flex;
   align-items: flex-end;

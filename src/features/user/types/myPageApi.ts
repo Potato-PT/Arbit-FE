@@ -35,6 +35,7 @@ export type MyBookmark = {
   startDate: string
   endDate: string
   bookmarkedAt: string
+  price?: string | null
 }
 
 export type UpdateNicknameRequest = {
@@ -42,11 +43,11 @@ export type UpdateNicknameRequest = {
 }
 
 export type UpdateNicknameResponse = {
-  nickname: string
+  nickname?: string
 }
 
 export type UpdateProfileImageResponse = {
-  profileImageUrl: string
+  profileImageUrl?: string
 }
 
 export type DeleteMyAccountResponse = {

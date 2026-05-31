@@ -8,7 +8,7 @@ export type EventSearchSort = 'distance' | 'deadline' | 'upcoming'
 export type EventStatus = 'ongoing' | 'upcoming' | 'ended' | '진행중' | '예정' | '종료'
 
 export type EventSummary = {
-  eventId?: string | number
+  eventId?: string
   id?: string | number
   title: string
   category: string
@@ -40,16 +40,22 @@ export type EventReview = {
   isPublic?: boolean
 }
 
+export type EventReviewListItem = {
+  id: string | number
+  rating: number
+  content: string
+  verificationImageUrl: string
+  createdAt: string
+}
+
 export type EventDetail = EventSummary & {
   hall?: string
-  fee?: string
   price?: string
   time?: string
   eventTime?: string
   url?: string
   homepageUrl?: string
-  tag?: string[]
-  tags?: string[]
+  keyword?: string[]
   reviews?: EventReview[]
 }
 
@@ -125,12 +131,22 @@ function getApiErrorMessage(error: ApiFailureResponse['error'] | null) {
   return typeof error === 'string' ? error : error.message ?? '요청 처리 중 오류가 발생했습니다.'
 }
 
-async function parseEventsResponse<T>(response: Response): Promise<T> {
+async function parseEventsResponse<T>(
+  response: Response,
+  options: { redirectOnUnauthorized?: boolean } = {},
+): Promise<T> {
   const result = (await response.json().catch(() => null)) as ApiResponse<T> | T | null
 
   if (response.status === 401) {
-    handleUnauthorized()
+    if (options.redirectOnUnauthorized) {
+      handleUnauthorized()
+    }
+
     throw new ApiError('로그인이 필요합니다.', response.status)
+  }
+
+  if (response.status === 404) {
+    throw new ApiError('이벤트를 찾을 수 없습니다.', response.status)
   }
 
   if (!result) {
@@ -191,14 +207,9 @@ function createQueryString(query: Record<string, string | number | boolean | unk
   return queryString ? `?${queryString}` : ''
 }
 
-function createOptionalAuthHeaders() {
-  return createAuthorizationHeaders()
-}
-
 export async function getEvents(query: EventsQuery = {}) {
   const response = await fetch(`${API_BASE_URL}${EVENTS_API_PATH}${createQueryString(query)}`, {
     method: 'GET',
-    headers: createOptionalAuthHeaders(),
   })
 
   return parseEventsResponse<EventsResponse | EventSummary[]>(response)
@@ -207,22 +218,20 @@ export async function getEvents(query: EventsQuery = {}) {
 export async function searchEvents(query: EventSearchQuery = {}) {
   const response = await fetch(`${API_BASE_URL}${EVENTS_API_PATH}/search${createQueryString(query)}`, {
     method: 'GET',
-    headers: createOptionalAuthHeaders(),
   })
 
   return parseEventsResponse<EventSearchResponse | EventSummary[]>(response)
 }
 
-export async function getEventDetail(eventId: string | number) {
+export async function getEventDetail(eventId: string) {
   const response = await fetch(`${API_BASE_URL}${EVENTS_API_PATH}/${encodeURIComponent(eventId)}`, {
     method: 'GET',
-    headers: createOptionalAuthHeaders(),
   })
 
   return parseEventsResponse<EventDetail>(response)
 }
 
-export async function createEventReview(eventId: string | number, request: CreateReviewRequest) {
+export async function createEventReview(eventId: string, request: CreateReviewRequest) {
   const response = await fetch(
     `${API_BASE_URL}${EVENTS_API_PATH}/${encodeURIComponent(eventId)}/reviews`,
     {
@@ -235,5 +244,24 @@ export async function createEventReview(eventId: string | number, request: Creat
     },
   )
 
-  return parseEventsResponse<CreateReviewResponse>(response)
+  if (response.status === 400) {
+    throw new ApiError('평점 또는 리뷰 내용을 확인해주세요.', response.status)
+  }
+
+  if (response.status === 409) {
+    throw new ApiError('이미 이 이벤트에 리뷰를 작성했습니다.', response.status)
+  }
+
+  return parseEventsResponse<CreateReviewResponse>(response, { redirectOnUnauthorized: true })
+}
+
+export async function getEventReviews(eventId: string) {
+  const response = await fetch(
+    `${API_BASE_URL}${EVENTS_API_PATH}/${encodeURIComponent(eventId)}/reviews`,
+    {
+      method: 'GET',
+    },
+  )
+
+  return parseEventsResponse<EventReviewListItem[]>(response)
 }
