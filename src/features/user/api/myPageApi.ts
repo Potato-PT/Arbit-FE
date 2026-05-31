@@ -4,7 +4,6 @@ import { createJsonHeaders, createUploadHeaders } from '../../../api/headers'
 import { ApiError } from './authApi'
 import type {
   ApiResponse,
-  DeleteMyAccountResponse,
   MyBookmark,
   MyProfile,
   MyReview,
@@ -41,27 +40,6 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
   }
 
   return result.data
-}
-
-async function parseOptionalApiResponse<T>(response: Response): Promise<T | undefined> {
-  if (response.status === 401) {
-    handleUnauthorized()
-    throw new ApiError('로그인이 필요합니다.', response.status)
-  }
-
-  if (response.status === 404) {
-    throw new ApiError('사용자 정보를 찾을 수 없습니다.', response.status)
-  }
-
-  if (response.status === 204) {
-    return undefined
-  }
-
-  if (response.ok && response.headers.get('content-length') === '0') {
-    return undefined
-  }
-
-  return parseApiResponse<T>(response)
 }
 
 async function requestMyPage<T>(path: string, init?: RequestInit): Promise<T> {
@@ -110,13 +88,4 @@ export function getMyBookmarks() {
     method: 'GET',
     headers: createJsonHeaders(),
   })
-}
-
-export async function deleteMyAccount() {
-  const response = await fetch(`${API_BASE_URL}${MY_PAGE_API_PATH}`, {
-    method: 'DELETE',
-    headers: createJsonHeaders(),
-  })
-
-  return parseOptionalApiResponse<DeleteMyAccountResponse>(response)
 }

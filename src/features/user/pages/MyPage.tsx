@@ -4,14 +4,13 @@ import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import { clearAuthStorage } from '../../../api/authStorage'
 import {
-  deleteMyAccount,
   getMyBookmarks,
   getMyProfile,
   getMyReviews,
   updateNickname,
   updateProfileImage,
 } from '../api/myPageApi'
-import { ApiError } from '../api/authApi'
+import { ApiError, logout } from '../api/authApi'
 import type {
   MyBookmark,
   MyProfile,
@@ -39,8 +38,8 @@ function MyPage() {
   const [isNicknameSaving, setIsNicknameSaving] = useState(false)
   const [profileImageError, setProfileImageError] = useState('')
   const [isProfileImageSaving, setIsProfileImageSaving] = useState(false)
-  const [deleteAccountError, setDeleteAccountError] = useState('')
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const profileImageInputRef = useRef<HTMLInputElement>(null)
   const tasteKeywords = profile?.tasteKeywords ?? []
 
@@ -184,22 +183,16 @@ function MyPage() {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    if (isDeletingAccount) {
+  const handleLogout = async () => {
+    if (isLoggingOut) {
       return
     }
 
-    const confirmed = window.confirm('정말 회원 탈퇴를 진행하시겠습니까? 저장된 계정 정보가 삭제됩니다.')
-
-    if (!confirmed) {
-      return
-    }
-
-    setDeleteAccountError('')
-    setIsDeletingAccount(true)
+    setLogoutError('')
+    setIsLoggingOut(true)
 
     try {
-      await deleteMyAccount()
+      await logout()
       clearAuthStorage()
       navigate('/user/login', { replace: true })
     } catch (error) {
@@ -209,13 +202,9 @@ function MyPage() {
         return
       }
 
-      setDeleteAccountError(
-        error instanceof ApiError && error.status === 404
-          ? '사용자 정보를 찾을 수 없습니다.'
-          : '회원 탈퇴 중 오류가 발생했습니다.',
-      )
+      setLogoutError('로그아웃 중 오류가 발생했습니다.')
     } finally {
-      setIsDeletingAccount(false)
+      setIsLoggingOut(false)
     }
   }
 
@@ -309,18 +298,18 @@ function MyPage() {
               {profileImageError}
             </p>
           )}
-          <div className="account-danger-zone">
+          <div className="account-session-zone">
             <button
-              className="account-delete-button"
+              className="account-logout-button"
               type="button"
-              onClick={handleDeleteAccount}
-              disabled={isProfileLoading || isDeletingAccount}
+              onClick={handleLogout}
+              disabled={isProfileLoading || isLoggingOut}
             >
-              {isDeletingAccount ? '탈퇴 처리 중' : '회원 탈퇴'}
+              {isLoggingOut ? '로그아웃 중' : '로그아웃'}
             </button>
-            {deleteAccountError && (
+            {logoutError && (
               <p className="profile-error" role="alert">
-                {deleteAccountError}
+                {logoutError}
               </p>
             )}
           </div>

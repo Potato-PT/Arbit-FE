@@ -4,6 +4,8 @@ import '../styles/Login.css'
 import artGallery from '../../../assets/artgallery.png'
 import logo from '../../../assets/logo.png'
 import AppFooter from '../../../components/AppFooter'
+import { readRecommendationEventIds, saveAuthenticatedUsername } from '../../../api/authStorage'
+import { getHomeRecommendations } from '../../../api/homeApi'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { ApiError, login as loginUser } from '../api/authApi'
 
@@ -28,7 +30,29 @@ function Login() {
     try {
       const tokens = await loginUser({ username, password })
       setAuthTokens(tokens)
-      navigate('/')
+      saveAuthenticatedUsername(username)
+
+      const eventIds = readRecommendationEventIds()
+
+      if (eventIds.length === 0) {
+        navigate('/', { replace: true, state: { recommendationMessage: '취향 설정에서 추천 이벤트를 먼저 선택해 주세요.' } })
+        return
+      }
+
+      try {
+        const recommendations = await getHomeRecommendations(eventIds)
+
+        navigate('/', { replace: true, state: { recommendations } })
+      } catch (error) {
+        navigate('/', {
+          replace: true,
+          state: {
+            recommendationMessage: error instanceof ApiError && error.status === 401
+              ? '로그인이 만료되었습니다. 다시 로그인하면 맞춤 추천을 확인할 수 있습니다.'
+              : '추천 이벤트를 불러오지 못했습니다.',
+          },
+        })
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError && error.status === 401

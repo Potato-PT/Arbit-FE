@@ -154,7 +154,7 @@
   color: #b3483b;
 }
 
-.account-danger-zone {
+.account-session-zone {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -162,7 +162,7 @@
   margin-top: 16px;
 }
 
-.account-delete-button {
+.account-logout-button {
   min-height: 34px;
   padding: 0 14px;
   border: 1px solid #efd1cb;
@@ -174,7 +174,7 @@
   font-weight: 800;
 }
 
-.account-delete-button:disabled {
+.account-logout-button:disabled {
   cursor: default;
   opacity: 0.62;
 }
@@ -349,18 +349,24 @@
 .favorite-dday {
   position: absolute;
   z-index: 2;
-  top: 16px;
+  top: 14px;
   left: 16px;
   min-width: 42px;
-  height: 25px;
+  max-width: calc(100% - 90px);
+  min-height: 25px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 5px 10px;
   border-radius: 999px;
   background: #fff0ee;
   color: #ff594e;
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .favorite-heart {
@@ -495,15 +501,21 @@
 }
 
 .favorite-category {
+  max-width: 100%;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
-  height: 24px;
-  padding: 0 13px;
+  min-height: 24px;
+  padding: 5px 13px;
   border-radius: 999px;
   background: #e9e2dc;
   color: #8b8179;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .favorite-card h3 {
@@ -512,9 +524,11 @@
   font-size: 19px;
   font-weight: 400;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .favorite-meta {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -522,6 +536,7 @@
   color: #4d4945;
   font-size: 14px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .favorite-meta svg {

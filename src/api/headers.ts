@@ -12,6 +12,12 @@ export function getAccessTokenForApi() {
   return readAccessToken() || readFallbackAccessToken()
 }
 
+export function hasValidAccessTokenForApi() {
+  const accessToken = getAccessTokenForApi().trim()
+
+  return Boolean(accessToken && isJwtLike(accessToken))
+}
+
 export function createAuthorizationHeaders(): Record<string, string> {
   const accessToken = getAccessTokenForApi().trim()
 

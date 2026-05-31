@@ -16,16 +16,17 @@ type PreferencesDataResponse = {
 }
 
 export type SavePreferencesRequest = number[]
-type SavePreferencesApiRequest = {
+type SavePreferencesApiPayload = {
   success: true
   data: SavePreferencesRequest
   error: null
 }
+type SavePreferencesResponse = SavePreferencesRequest
 
 type ApiSuccessResponse<T> = {
   success: true
   data: T
-  error: null
+  error?: null
 }
 
 type ApiFailureResponse = {
@@ -47,7 +48,7 @@ function handleUnauthorized() {
   }
 }
 
-function getApiErrorMessage(error: ApiFailureResponse['error'] | null) {
+function getApiErrorMessage(error: ApiFailureResponse['error'] | null | undefined) {
   if (!error) {
     return '요청 처리 중 오류가 발생했습니다.'
   }
@@ -93,7 +94,7 @@ function isApiResponse<T>(result: unknown): result is ApiResponse<T> {
     typeof result === 'object' &&
     result !== null &&
     'success' in result &&
-    'error' in result
+    'data' in result
   )
 }
 
@@ -160,7 +161,7 @@ export async function savePreferences(selectedEventIds: SavePreferencesRequest) 
     throw new ApiError('로그인이 필요합니다.', 401)
   }
 
-  const request: SavePreferencesApiRequest = {
+  const request: SavePreferencesApiPayload = {
     success: true,
     data: selectedEventIds,
     error: null,
@@ -170,6 +171,17 @@ export async function savePreferences(selectedEventIds: SavePreferencesRequest) 
     headers: createJsonHeaders(),
     body: JSON.stringify(request),
   })
+  const result = await parsePreferencesResponse<SavePreferencesResponse>(response, {
+    redirectOnUnauthorized: true,
+  })
 
-  return parsePreferencesResponse<unknown>(response, { redirectOnUnauthorized: true })
+  if (!Array.isArray(result) || !result.every(isValidEventId)) {
+    throw new ApiError('취향 저장 응답 형식이 올바르지 않습니다.', response.status)
+  }
+
+  return result
+}
+
+function isValidEventId(eventId: unknown): eventId is number {
+  return typeof eventId === 'number' && Number.isFinite(eventId)
 }

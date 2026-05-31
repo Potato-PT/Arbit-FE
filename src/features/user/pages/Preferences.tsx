@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
+import { saveRecommendationEventIds } from '../../../api/authStorage'
 import { ApiError } from '../api/authApi'
 import {
   getPreferenceCategories,
@@ -97,8 +98,10 @@ function Preferences() {
     setErrorMessage('')
 
     try {
-      await savePreferences(selectedEventIds)
-      navigate('/', { state: { recommendationEventIds: selectedEventIds } })
+      const eventIds = await savePreferences(selectedEventIds)
+
+      saveRecommendationEventIds(eventIds)
+      navigate('/')
     } catch (error) {
       if (error instanceof ApiError && error.status === 400) {
         setErrorMessage(error.message)

@@ -239,6 +239,10 @@
   margin-bottom: 44px;
 }
 
+.section-heading > div {
+  min-width: 0;
+}
+
 .section-heading h2 {
   margin: 0 0 10px;
   color: #4f4a45;
@@ -297,6 +301,33 @@
   color: #c1463d;
 }
 
+.home-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid #eadfce;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  background: #fffaf3;
+  color: #766553;
+  font-size: 14px;
+}
+
+.home-notice a {
+  flex: 0 0 auto;
+  color: #9b7048;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-notice span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .exhibition-card {
   position: relative;
   min-width: 0;
@@ -331,15 +362,21 @@
   top: 16px;
   left: 16px;
   min-width: 42px;
-  height: 25px;
+  max-width: calc(100% - 90px);
+  min-height: 25px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 5px 10px;
   border-radius: 999px;
   background: #fff0ee;
   color: #ff594e;
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-match-badge {
@@ -347,6 +384,7 @@
   z-index: 2;
   left: 16px;
   bottom: 16px;
+  max-width: calc(100% - 32px);
   min-height: 28px;
   display: inline-flex;
   align-items: center;
@@ -356,6 +394,9 @@
   color: #4d4945;
   font-size: 12px;
   font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dday.muted {
@@ -485,15 +526,21 @@
 }
 
 .category {
+  max-width: 100%;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
-  height: 24px;
-  padding: 0 13px;
+  min-height: 24px;
+  padding: 5px 13px;
   border-radius: 999px;
   background: #e9e2dc;
   color: #8b8179;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .exhibition-card h3 {
@@ -502,6 +549,7 @@
   font-size: 19px;
   font-weight: 400;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .meta {
@@ -511,6 +559,7 @@
   color: #4d4945;
   font-size: 14px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .meta::before {
@@ -586,6 +635,11 @@
 
   .view-all {
     margin-top: 18px;
+  }
+
+  .home-notice {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .card-grid {

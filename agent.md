@@ -62,13 +62,17 @@ When adding a new route page, put the component under the relevant `src/features
 
 ## API Rules
 
-Use `API_BASE_URL` from `src/api/config.ts`. It reads `VITE_API_BASE_URL` and falls back to `http://34.138.160.76:8080`.
+Use `API_BASE_URL` from `src/api/config.ts`. It reads `VITE_API_BASE_URL`. During local development, the default is an empty base URL so `/api` requests go through the Vite proxy. For production builds, it falls back to `http://34.138.160.76:8080`.
+
+The Vite development proxy forwards `/api` to `VITE_API_PROXY_TARGET` or `http://34.138.160.76:8080`.
 
 Use `src/api/authStorage.ts` for auth storage behavior.
 
 - Login status key: `arbit.isLoggedIn`
 - Access token key: `accessToken`
 - Refresh token key: `refreshToken`
+- Authenticated username key: `arbit.authenticatedUsername`
+- Recommendation event IDs by username key: `arbit.recommendationEventIdsByUsername`
 
 Use `src/api/headers.ts` for request headers.
 
@@ -85,7 +89,7 @@ Do not manually set `Content-Type` on file upload requests. Let the browser set 
 - `getHome()`: `GET /api/home`
 - `getHomeRecommendations()`: `GET /api/home/recommendations`
 
-`getHomeRecommendations()` accepts 4-5 selected event IDs, sends them as repeated `eventIds` query parameters, and sends a bearer token. It falls back to `getHome()` when the ID count is outside that range or the API returns 401. Keep this behavior when changing the home page for logged-out compatibility.
+`getHomeRecommendations()` is for authenticated users. It sends a bearer token and 4-5 selected event IDs as repeated `eventIds` query parameters. After saving preferences, store the returned IDs through `saveRecommendationEventIds()`. The home page skips this request when there is no valid JWT or no stored recommendation event IDs.
 
 ## Exhibition API
 
@@ -114,8 +118,9 @@ Bookmark mutation requests send a bearer token. A 401 response clears auth stora
 
 - `signup`
 - `login`
+- `logout`: `POST /api/auth/logout`
 
-Login and signup store tokens through `useAuthStatus().setAuthTokens()`.
+Login and signup store tokens through `useAuthStatus().setAuthTokens()`. Logout sends a bearer token and clears auth storage after a successful response.
 
 `src/features/user/api/preferencesApi.ts`
 
@@ -131,7 +136,6 @@ Only `savePreferences()` sends a bearer token. A 401 response clears auth storag
 - `updateProfileImage(file)`: `PUT /api/users/me/profile_image`
 - `getMyReviews()`: `GET /api/users/me/reviews`
 - `getMyBookmarks()`: `GET /api/users/me/bookmarks`
-- `deleteMyAccount()`: `DELETE /api/users/me`
 
 For `/api/users/me` requests, a 401 response clears auth storage and redirects to `/user/login`. Non-401 errors should remain catchable by the screen so the UI can show an error message.
 

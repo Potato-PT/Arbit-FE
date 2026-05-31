@@ -15,19 +15,31 @@ type AppHeaderProps = {
   variant?: AppHeaderVariant
   sectionLinks?: SectionLink[]
   showAccountLabel?: boolean
+  onBrandClick?: () => void
 }
 
 function AppHeader({
   variant = 'default',
   sectionLinks = [],
   showAccountLabel = false,
+  onBrandClick,
 }: AppHeaderProps) {
   const { accountLabel, accountPath } = useAuthStatus()
   const className = ['app-header', `app-header-${variant}`].join(' ')
 
   return (
     <header className={className}>
-      <Link className="app-header-brand" to="/" aria-label="Arbit home">
+      <Link
+        className="app-header-brand"
+        to="/"
+        aria-label="Arbit home"
+        onClick={onBrandClick
+          ? (event) => {
+              event.preventDefault()
+              onBrandClick()
+            }
+          : undefined}
+      >
         <img src={logo} alt="Arbit" />
       </Link>
 

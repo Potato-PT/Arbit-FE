@@ -4,10 +4,17 @@ import './styles/Home.css'
 import AppHeader from './components/AppHeader'
 import AppFooter from './components/AppFooter'
 import { getHome, getHomeRecommendations } from './api/homeApi'
-import { readAccessToken } from './api/authStorage'
+import { readAccessToken, readRecommendationEventIds } from './api/authStorage'
+import { hasValidAccessTokenForApi } from './api/headers'
 import { ApiError } from './features/user/api/authApi'
 import { addBookmark, removeBookmark } from './features/exhibitions/api/bookmarksApi'
-import type { ExhibitionArtwork, HeroExhibition, HomeResponse, RecommendedExhibition } from './types/home'
+import type {
+  ExhibitionArtwork,
+  HeroExhibition,
+  HomeResponse,
+  RecommendationApiItem,
+  RecommendedExhibition,
+} from './types/home'
 
 function HeartIcon({ filled = false }: { filled?: boolean }) {
   return (
@@ -19,13 +26,12 @@ function HeartIcon({ filled = false }: { filled?: boolean }) {
 
 function App() {
   const location = useLocation()
-  const recommendationEventIds = useMemo(
-    () => getRecommendationEventIds(location.state),
-    [location.state],
-  )
+  const initialRecommendations = getInitialRecommendations(location.state)
+  const initialRecommendationMessage = getInitialRecommendationMessage(location.state)
   const [homeData, setHomeData] = useState<HomeResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
+  const [recommendationMessage, setRecommendationMessage] = useState('')
   const [pendingBookmarkIds, setPendingBookmarkIds] = useState<Set<string>>(() => new Set())
   const normalizedHome = useMemo(() => normalizeHomeData(homeData), [homeData])
   const currentHeroExhibition = normalizedHome.heroExhibition
@@ -37,17 +43,45 @@ function App() {
     async function loadHome() {
       setIsLoading(true)
       setErrorMessage('')
+      setRecommendationMessage('')
 
       try {
-        const nextHomeData = recommendationEventIds && readAccessToken()
-          ? mergeHomeRecommendations(
-              await getHome(),
-              await getHomeRecommendations(recommendationEventIds),
-            )
-          : await getHome()
+        const home = await getHome()
+        let nextHomeData: HomeResponse = initialRecommendations
+          ? mergeHomeRecommendations(home, initialRecommendations)
+          : home
+        let nextRecommendationMessage = initialRecommendationMessage
+
+        if (
+          hasValidAccessTokenForApi() &&
+          !initialRecommendations &&
+          !initialRecommendationMessage
+        ) {
+          const eventIds = readRecommendationEventIds()
+
+          if (eventIds.length === 0) {
+            nextRecommendationMessage = '취향 설정에서 추천 이벤트를 먼저 선택해 주세요.'
+          } else {
+            try {
+              nextHomeData = mergeHomeRecommendations(
+                home,
+                await getHomeRecommendations(eventIds),
+              )
+            } catch (error) {
+              if (error instanceof ApiError && error.status === 400) {
+                nextRecommendationMessage = '취향 설정에서 추천 이벤트를 먼저 선택해 주세요.'
+              } else if (error instanceof ApiError && error.status === 401) {
+                nextRecommendationMessage = '로그인이 만료되었습니다. 다시 로그인하면 맞춤 추천을 확인할 수 있습니다.'
+              } else {
+                throw error
+              }
+            }
+          }
+        }
 
         if (!ignore) {
           setHomeData(nextHomeData)
+          setRecommendationMessage(nextRecommendationMessage)
         }
       } catch {
         if (!ignore) {
@@ -66,7 +100,53 @@ function App() {
     return () => {
       ignore = true
     }
-  }, [recommendationEventIds])
+  }, [initialRecommendationMessage, initialRecommendations])
+
+  const handleBrandClick = async () => {
+    if (!hasValidAccessTokenForApi()) {
+      setRecommendationMessage('로그인 후 취향에 맞춘 추천 이벤트를 확인할 수 있습니다.')
+      return
+    }
+
+    const eventIds = readRecommendationEventIds()
+
+    if (eventIds.length === 0) {
+      setRecommendationMessage('취향 설정에서 추천 이벤트를 먼저 선택해 주세요.')
+      return
+    }
+
+    setIsLoading(true)
+    setErrorMessage('')
+    setRecommendationMessage('')
+
+    try {
+      const recommendations = await getHomeRecommendations(eventIds)
+
+      setHomeData((current) =>
+        current ? mergeHomeRecommendations(current, recommendations) : current,
+      )
+    } catch (error) {
+      console.error('Failed to load home recommendations from the brand logo.', error)
+
+      if (error instanceof ApiError && error.status === 401) {
+        setRecommendationMessage('로그인이 만료되었습니다. 다시 로그인하면 맞춤 추천을 확인할 수 있습니다.')
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 400) {
+        setRecommendationMessage('취향 설정에서 추천 이벤트를 먼저 선택해 주세요.')
+        return
+      }
+
+      setErrorMessage(
+        error instanceof ApiError
+          ? `추천 이벤트를 불러오지 못했습니다. (${error.status}: ${error.message})`
+          : '추천 이벤트를 불러오지 못했습니다. 브라우저 콘솔을 확인해 주세요.',
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleBookmarkToggle = async (item: RecommendedExhibition, isBookmarked: boolean) => {
     const eventId = item.eventId
@@ -119,7 +199,7 @@ function App() {
 
   return (
     <main className="home-page" aria-label="Arbit home">
-      <AppHeader variant="home" />
+      <AppHeader variant="home" onBrandClick={() => void handleBrandClick()} />
 
       {currentHeroExhibition && (
         <section className="hero" aria-labelledby="hero-title">
@@ -173,6 +253,15 @@ function App() {
             </svg>
           </Link>
         </div>
+
+        {!isLoading && recommendationMessage && (
+          <div className="home-notice" role="status">
+            <span>{recommendationMessage}</span>
+            <Link to={recommendationMessage.startsWith('취향 설정') ? '/user/preferences' : '/user/login'}>
+              {recommendationMessage.startsWith('취향 설정') ? '취향 설정하기' : '로그인하기'}
+            </Link>
+          </div>
+        )}
 
         {isLoading && (
           <div className="home-state" role="status">
@@ -248,21 +337,30 @@ function App() {
   )
 }
 
-function getRecommendationEventIds(state: unknown) {
+function getInitialRecommendations(state: unknown) {
   if (
     typeof state !== 'object' ||
     state === null ||
-    !('recommendationEventIds' in state) ||
-    !Array.isArray(state.recommendationEventIds)
+    !('recommendations' in state) ||
+    !Array.isArray(state.recommendations)
   ) {
     return undefined
   }
 
-  const eventIds = [...new Set(state.recommendationEventIds.filter(
-    (eventId): eventId is number => typeof eventId === 'number' && Number.isFinite(eventId),
-  ))]
+  return state.recommendations as RecommendationApiItem[]
+}
 
-  return eventIds.length >= 4 && eventIds.length <= 5 ? eventIds : undefined
+function getInitialRecommendationMessage(state: unknown) {
+  if (
+    typeof state !== 'object' ||
+    state === null ||
+    !('recommendationMessage' in state) ||
+    typeof state.recommendationMessage !== 'string'
+  ) {
+    return ''
+  }
+
+  return state.recommendationMessage
 }
 
 function updateHomeBookmark(data: HomeResponse | null, eventId: string, bookmarked: boolean): HomeResponse | null {
@@ -290,14 +388,23 @@ function updateHomeBookmark(data: HomeResponse | null, eventId: string, bookmark
   }
 }
 
-function mergeHomeRecommendations(home: HomeResponse, recommendations: HomeResponse): HomeResponse {
-  if (!Array.isArray(recommendations)) {
-    return recommendations
-  }
-
+function mergeHomeRecommendations(home: HomeResponse, recommendations: RecommendationApiItem[]): HomeResponse {
   return {
     ...(Array.isArray(home) ? { events: home } : home),
-    recommendedExhibitions: recommendations,
+    recommendedExhibitions: recommendations.map(toRecommendedExhibition),
+  }
+}
+
+function toRecommendedExhibition(item: RecommendationApiItem): RecommendedExhibition {
+  return {
+    ...item,
+    id: '',
+    dday: item.status,
+    period: formatPeriod(item.startDate, item.endDate),
+    venue: item.venue ?? undefined,
+    artwork: 'portal',
+    liked: item.bookmarked,
+    posterImageUrl: item.posterImageUrl ?? undefined,
   }
 }
 

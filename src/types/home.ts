@@ -31,6 +31,20 @@ export interface HeroExhibition extends Exhibition {
 
 export type RecommendedExhibition = Exhibition
 
+export type RecommendationApiItem = {
+  title: string
+  category: string
+  posterImageUrl: string | null
+  venue: string | null
+  district: string
+  startDate: string
+  endDate: string
+  free: boolean
+  status: string
+  matchScore: number
+  bookmarked: boolean
+}
+
 export type HomePayload = {
   heroExhibition?: HeroExhibition
   hero?: HeroExhibition

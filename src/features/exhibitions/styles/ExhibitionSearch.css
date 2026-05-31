@@ -325,17 +325,22 @@
   z-index: 2;
   top: 17px;
   right: 16px;
+  max-width: calc(100% - 32px);
   min-width: 44px;
-  height: 26px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 5px 10px;
   border-radius: 5px;
   background: #e6cdb1;
   color: #ffffff;
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-body {
@@ -354,6 +359,7 @@
   font-size: 18px;
   font-weight: 500;
   line-height: 1.38;
+  overflow-wrap: anywhere;
 }
 
 .result-venue {
@@ -361,6 +367,7 @@
   color: #8a847d;
   font-size: 14px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .result-footer {

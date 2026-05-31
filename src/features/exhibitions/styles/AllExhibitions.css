@@ -413,12 +413,16 @@
   top: 10px;
   left: 10px;
   z-index: 2;
+  max-width: calc(100% - 62px);
   border-radius: 999px;
   background: #dec4a4;
   color: #5c5044;
   padding: 4px 9px;
   font-size: 9px;
   font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-today {
@@ -518,6 +522,7 @@
   font-size: 17px;
   font-weight: 800;
   line-height: 1.32;
+  overflow-wrap: anywhere;
   transition: color 160ms ease;
 }
 

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../../../api/config'
+import { createAuthorizationHeaders } from '../../../api/headers'
 
 export type Gender = 'MALE' | 'FEMALE'
 
@@ -83,4 +84,22 @@ export function signup(request: SignupRequest) {
 
 export function login(request: LoginRequest) {
   return postAuth<LoginRequest, AuthTokenResponse>(`${AUTH_API_PATH}/login`, request)
+}
+
+export async function logout() {
+  const response = await fetch(`${API_BASE_URL}${AUTH_API_PATH}/logout`, {
+    method: 'POST',
+    headers: createAuthorizationHeaders(),
+  })
+
+  const result = (await response.json().catch(() => null)) as ApiResponse<unknown> | null
+
+  if (!response.ok || (result && !result.success)) {
+    const message =
+      typeof result?.error === 'string'
+        ? result.error
+        : result?.error?.message ?? '로그아웃 중 오류가 발생했습니다.'
+
+    throw new ApiError(message, response.status)
+  }
 }

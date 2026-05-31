@@ -49,7 +49,3 @@ export type UpdateNicknameResponse = {
 export type UpdateProfileImageResponse = {
   profileImageUrl?: string
 }
-
-export type DeleteMyAccountResponse = {
-  message?: string
-}

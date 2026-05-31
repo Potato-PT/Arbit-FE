@@ -3,6 +3,8 @@ import type { AuthTokenResponse } from '../features/user/api/authApi'
 export const AUTH_STORAGE_KEY = 'arbit.isLoggedIn'
 export const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
 export const REFRESH_TOKEN_STORAGE_KEY = 'refreshToken'
+export const AUTHENTICATED_USERNAME_STORAGE_KEY = 'arbit.authenticatedUsername'
+export const RECOMMENDATION_EVENT_IDS_STORAGE_KEY = 'arbit.recommendationEventIdsByUsername'
 
 function readLocalStorage(key: string) {
   if (typeof window === 'undefined') {
@@ -14,6 +16,31 @@ function readLocalStorage(key: string) {
 
 export function readAccessToken() {
   return readLocalStorage(ACCESS_TOKEN_STORAGE_KEY)
+}
+
+export function readRecommendationEventIds() {
+  const username = readLocalStorage(AUTHENTICATED_USERNAME_STORAGE_KEY)
+  const storedEventIdsByUsername = readLocalStorage(RECOMMENDATION_EVENT_IDS_STORAGE_KEY)
+
+  if (!username || !storedEventIdsByUsername) {
+    return []
+  }
+
+  try {
+    const eventIdsByUsername = JSON.parse(storedEventIdsByUsername) as unknown
+    const eventIds =
+      typeof eventIdsByUsername === 'object' &&
+      eventIdsByUsername !== null &&
+      username in eventIdsByUsername
+        ? (eventIdsByUsername as Record<string, unknown>)[username]
+        : undefined
+
+    return Array.isArray(eventIds) && eventIds.every(isValidEventId) && isValidEventIdCount(eventIds)
+      ? eventIds
+      : []
+  } catch {
+    return []
+  }
 }
 
 export function hasStoredLoginStatus() {
@@ -44,6 +71,40 @@ export function saveAuthTokens({ accessToken, refreshToken }: AuthTokenResponse)
   window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, normalizedRefreshToken)
 }
 
+export function saveAuthenticatedUsername(username: string) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(AUTHENTICATED_USERNAME_STORAGE_KEY, username)
+}
+
+export function saveRecommendationEventIds(eventIds: number[]) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const validEventIds = [...new Set(eventIds.filter(isValidEventId))]
+
+  if (!isValidEventIdCount(validEventIds)) {
+    throw new Error('Invalid recommendation event IDs')
+  }
+
+  const username = readLocalStorage(AUTHENTICATED_USERNAME_STORAGE_KEY)
+
+  if (!username) {
+    throw new Error('Missing authenticated username')
+  }
+
+  const storedEventIdsByUsername = readLocalStorage(RECOMMENDATION_EVENT_IDS_STORAGE_KEY)
+  const eventIdsByUsername = parseEventIdsByUsername(storedEventIdsByUsername)
+
+  window.localStorage.setItem(
+    RECOMMENDATION_EVENT_IDS_STORAGE_KEY,
+    JSON.stringify({ ...eventIdsByUsername, [username]: validEventIds }),
+  )
+}
+
 function normalizeJwt(token: unknown, label: string) {
   if (typeof token !== 'string') {
     throw new Error(`Invalid ${label}`)
@@ -64,6 +125,30 @@ export function isJwtLike(token: string) {
   return segments.length === 3 && segments.every(Boolean)
 }
 
+function isValidEventId(eventId: unknown): eventId is number {
+  return typeof eventId === 'number' && Number.isFinite(eventId)
+}
+
+function isValidEventIdCount(eventIds: number[]) {
+  return eventIds.length >= 4 && eventIds.length <= 5
+}
+
+function parseEventIdsByUsername(value: string) {
+  if (!value) {
+    return {}
+  }
+
+  try {
+    const parsedValue = JSON.parse(value) as unknown
+
+    return typeof parsedValue === 'object' && parsedValue !== null
+      ? parsedValue as Record<string, unknown>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
 export function clearAuthStorage() {
   if (typeof window === 'undefined') {
     return
@@ -72,5 +157,6 @@ export function clearAuthStorage() {
   window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
   window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
   window.localStorage.removeItem(AUTH_STORAGE_KEY)
+  window.localStorage.removeItem(AUTHENTICATED_USERNAME_STORAGE_KEY)
   window.dispatchEvent(new Event('arbit-auth-change'))
 }
