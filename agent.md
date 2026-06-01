@@ -41,26 +41,29 @@ For code changes, run `npm run lint` and `npm run build` unless the user explici
 Routes are declared directly in `src/main.tsx`.
 
 - `/`
-- `/exhibitions/search`
 - `/exhibitions/all`
 - `/exhibitions/:id`
 - `/exhibitions/:id/review`
 - `/user/login`
 - `/user/signup`
-- `/user/preferences`
+- `/user/preferences` (signup onboarding only)
 - `/user/mypage`
+
+Legacy `/exhibitions/search` and `/exhibition/all` URLs redirect to
+`/exhibitions/all`.
 
 When adding a new route page, put the component under the relevant `src/features/<feature>/pages` folder, import it in `src/main.tsx`, and add a `<Route>`. Use `Link` from `react-router-dom` for internal navigation.
 
 ## Code Structure
 
-- `src/App.tsx`: home route.
+- `src/App.tsx`: home route switch for guest and logged-in users.
 - `src/main.tsx`: app mount and route declarations.
 - `src/components/`: shared `AppHeader` and `AppFooter`.
 - `src/api/`: API base URL, auth storage, request header helpers, and home API helpers.
 - `src/hooks/`: shared hooks.
 - `src/types/`: home page types.
 - `src/features/exhibitions/`: exhibition API functions, pages, types, and styles.
+- `src/features/home/`: guest/logged-in home pages, shared home event section, and date utilities.
 - `src/features/user/`: login, signup, preferences, My Page, user API functions, user types, and styles.
 - `public/`: static public assets.
 
@@ -77,6 +80,7 @@ Use `src/api/authStorage.ts` for auth storage behavior.
 - Refresh token key: `refreshToken`
 - Authenticated username key: `arbit.authenticatedUsername`
 - Recommendation event IDs by username key: `arbit.recommendationEventIdsByUsername`
+- Preferences onboarding session key: `arbit.preferencesOnboarding`
 
 Use `src/api/headers.ts` for request headers.
 
@@ -98,14 +102,14 @@ Do not manually set `Content-Type` on file upload requests. Let the browser set 
 Login also attempts to load recommendations before navigating home. Clicking the
 home logo while already on the home route refreshes personalized recommendations
 instead of navigating. The home recommendation cards and all-exhibitions cards
-support bookmark mutations.
+support bookmark mutations for authenticated users. Guest home bookmark actions
+navigate to login.
 
 ## Exhibition API
 
 `src/features/exhibitions/api/eventsApi.ts`
 
 - `getEvents(query)`: `GET /api/events`
-- `searchEvents(query)`: `GET /api/events/search`
 - `getEventDetail(eventId)`: `GET /api/events/{eventId}`
 - `createEventReview(eventId, request)`: `POST /api/events/{eventId}/reviews`
 - `getEventReviews(eventId)`: `GET /api/events/{eventId}/reviews`
@@ -137,10 +141,11 @@ Login and signup store tokens through `useAuthStatus().setAuthTokens()`. Logout 
 - `savePreferences(request)`: `POST /api/preferences`
 
 Only `savePreferences()` sends a bearer token. It wraps the selected event ID
-array as `{ success: true, data: selectedEventIds, error: null }`. The screen
-requires 4-5 selected events and stores the IDs returned by the API for later
-home recommendation requests. A 401 response clears auth storage and redirects
-to `/user/login`.
+array as `{ success: true, data: selectedEventIds, error: null }`. The screen is
+available only immediately after signup while the session onboarding marker is
+present, requires exactly 5 selected events, and stores the IDs returned by the
+API for later home recommendation requests. A 401 response clears auth storage
+and redirects to `/user/login`.
 
 `src/features/user/api/myPageApi.ts`
 
@@ -157,7 +162,7 @@ For `/api/users/me` requests, a 401 response clears auth storage and redirects t
 API-backed flows:
 
 - Home: `src/api/homeApi.ts`
-- Exhibition list/search/detail/review: `src/features/exhibitions/api/eventsApi.ts`
+- Exhibition list/detail/review: `src/features/exhibitions/api/eventsApi.ts`
 - Bookmark add/remove: `src/features/exhibitions/api/bookmarksApi.ts`
 - Preferences: `src/features/user/api/preferencesApi.ts`
 - My Page profile/reviews/bookmarks: `src/features/user/api/myPageApi.ts`
@@ -172,10 +177,11 @@ My Page API response types live in:
 
 Do not assume a visible control is already backed by behavior.
 
-- Search requests use browser geolocation for distance sorting when permission is
-  available. Search card hearts are display-only.
-- All-exhibitions and search "더 보기" buttons paginate the already loaded API
-  result in the browser in groups of 12. They do not request another backend page.
+- The former search screen is merged into all-exhibitions. The all-exhibitions
+  screen sends category, district, period, price, date, and sort filters to the
+  API, then applies keyword search to the loaded result in the browser.
+- The all-exhibitions "더 보기" button paginates the already loaded API result in
+  the browser in groups of 20. It does not request another backend page.
 - The login "로그인 유지" checkbox and "계정 찾기" button are currently
   presentation-only.
 - My Page bookmark hearts and review share buttons are currently

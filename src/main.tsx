@@ -4,7 +4,6 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import ExhibitionDetail from './features/exhibitions/pages/ExhibitionDetail.tsx'
-import ExhibitionSearch from './features/exhibitions/pages/ExhibitionSearch.tsx'
 import AllExhibitions from './features/exhibitions/pages/AllExhibitions.tsx'
 import ReviewWrite from './features/exhibitions/pages/ReviewWrite.tsx'
 import Login from './features/user/pages/Login.tsx'
@@ -17,7 +16,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
-        <Route path="/exhibitions/search" element={<ExhibitionSearch />} />
+        <Route path="/exhibitions/search" element={<Navigate to="/exhibitions/all" replace />} />
         <Route path="/exhibitions/all" element={<AllExhibitions />} />
         <Route path="/exhibition/all" element={<Navigate to="/exhibitions/all" replace />} />
         <Route path="/exhibitions/:id" element={<ExhibitionDetail />} />

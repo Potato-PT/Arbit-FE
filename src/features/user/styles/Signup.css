@@ -11,6 +11,8 @@ body:has(.signup-page) #root {
 
 .signup-page {
   min-height: 100svh;
+  width: 100vw;
+  margin: 0 calc(50% - 50vw);
   display: flex;
   flex-direction: column;
   color: #1a1c1c;
@@ -22,7 +24,7 @@ body:has(.signup-page) #root {
   flex: 1;
   display: flex;
   justify-content: center;
-  padding: 58px 24px 72px;
+  padding: 58px var(--app-content-gutter) 72px;
 }
 
 .signup-form-wrap {

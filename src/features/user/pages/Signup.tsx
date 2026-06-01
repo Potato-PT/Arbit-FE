@@ -2,7 +2,7 @@ import { useMemo, useState, type ComponentProps } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { saveAuthenticatedUsername } from '../../../api/authStorage'
+import { beginPreferencesOnboarding, saveAuthenticatedUsername } from '../../../api/authStorage'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { ApiError, signup, type Gender } from '../api/authApi'
 import '../styles/Signup.css'
@@ -61,7 +61,8 @@ function Signup() {
 
       setAuthTokens(tokens)
       saveAuthenticatedUsername(username)
-      navigate('/user/preferences')
+      beginPreferencesOnboarding()
+      navigate('/user/preferences', { replace: true, state: { fromSignup: true } })
     } catch (error) {
       if (error instanceof ApiError && error.status === 400) {
         setErrorMessage('입력값을 다시 확인해주세요.')

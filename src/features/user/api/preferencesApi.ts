@@ -140,14 +140,14 @@ function normalizePreferenceSeedEvents(seedEvents: unknown[]): PreferenceSeedEve
       event_id: seedEvent.event_id,
       title: getStringField(fields, 'title', '제목 없는 이벤트'),
       genre: getStringField(fields, 'genre', '장르 미정'),
-      posterImage: getStringField(fields, 'posterImage'),
+      posterImage: getStringField(fields, 'posterImageUrl') || getStringField(fields, 'posterImage'),
     }]
   })
 }
 
 function getStringField(
   value: Record<string, unknown>,
-  key: 'title' | 'genre' | 'posterImage',
+  key: 'title' | 'genre' | 'posterImage' | 'posterImageUrl',
   fallback = '',
 ) {
   return key in value && typeof value[key] === 'string' ? value[key] : fallback

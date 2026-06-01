@@ -1,5 +1,7 @@
 .detail-page {
   min-height: 100svh;
+  width: 100vw;
+  margin: 0 calc(50% - 50vw);
   background: #ffffff;
   color: #262321;
   font-family: var(--font-sans);
@@ -21,7 +23,7 @@
   display: grid;
   grid-template-columns: minmax(320px, 560px) minmax(0, 1fr);
   gap: clamp(44px, 6vw, 64px);
-  padding: 40px 48px 66px;
+  padding: 40px var(--app-content-gutter) 66px;
 }
 
 .detail-art {
@@ -283,7 +285,7 @@
 }
 
 .review-section {
-  padding: 0 48px 210px;
+  padding: 0 var(--app-content-gutter) 210px;
 }
 
 .review-heading {
@@ -442,7 +444,7 @@
   place-items: center;
   align-content: center;
   gap: 20px;
-  padding: 40px;
+  padding: 40px var(--app-content-gutter);
   text-align: center;
 }
 
@@ -474,8 +476,8 @@
 @media (max-width: 640px) {
   .detail-hero,
   .review-section {
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: var(--app-content-gutter);
+    padding-right: var(--app-content-gutter);
   }
 
   .detail-hero {

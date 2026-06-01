@@ -112,7 +112,7 @@ function ExhibitionDetail() {
         <AppHeader />
         <section className="detail-not-found">
           <h1>이벤트를 찾을 수 없습니다.</h1>
-          <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
+          <Link to="/exhibitions/all">행사 목록으로 돌아가기</Link>
         </section>
       </main>
     )
@@ -124,7 +124,7 @@ function ExhibitionDetail() {
         <AppHeader />
         <section className="detail-not-found" role="alert">
           <h1>{errorMessage || '이벤트 상세 정보를 불러오지 못했습니다.'}</h1>
-          <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
+          <Link to="/exhibitions/all">행사 목록으로 돌아가기</Link>
         </section>
       </main>
     )

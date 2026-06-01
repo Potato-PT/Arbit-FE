@@ -2,9 +2,13 @@ import { useState, type ComponentProps } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import '../styles/Login.css'
 import artGallery from '../../../assets/artgallery.png'
-import logo from '../../../assets/logo.png'
 import AppFooter from '../../../components/AppFooter'
-import { readRecommendationEventIds, saveAuthenticatedUsername } from '../../../api/authStorage'
+import AppHeader from '../../../components/AppHeader'
+import {
+  clearAuthStorage,
+  readRecommendationEventIds,
+  saveAuthenticatedUsername,
+} from '../../../api/authStorage'
 import { getHomeRecommendations } from '../../../api/homeApi'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { ApiError, login as loginUser } from '../api/authApi'
@@ -35,7 +39,7 @@ function Login() {
       const eventIds = readRecommendationEventIds()
 
       if (eventIds.length === 0) {
-        navigate('/', { replace: true, state: { recommendationMessage: '취향 설정에서 추천 이벤트를 먼저 선택해 주세요.' } })
+        navigate('/', { replace: true, state: { recommendationMessage: '회원가입 시 저장된 취향 추천 정보가 없습니다.' } })
         return
       }
 
@@ -64,13 +68,16 @@ function Login() {
     }
   }
 
+  const handleGuestLogin = () => {
+    clearAuthStorage()
+    navigate('/', { replace: true })
+  }
+
   return (
     <main className="login-page" aria-label="Arbit login">
-      <div className="login-content">
-        <Link className="login-brand" to="/" aria-label="Arbit home">
-          <img src={logo} alt="Arbit" />
-        </Link>
+      <AppHeader />
 
+      <div className="login-content">
         <section className="login-card" aria-label="로그인">
           <form className="login-form" onSubmit={handleSubmit}>
             <label className="login-field">
@@ -120,6 +127,14 @@ function Login() {
             <button className="login-submit" type="submit" disabled={isSubmitting}>
               <span>{isSubmitting ? '로그인 중' : '로그인하기'}</span>
               <ChevronRightIcon />
+            </button>
+            <button
+              className="login-guest"
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleGuestLogin}
+            >
+              게스트로 로그인하기
             </button>
           </form>
 

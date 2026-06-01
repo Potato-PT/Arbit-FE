@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import { readAccessToken } from '../../../api/authStorage'
@@ -35,17 +35,24 @@ const genreFilters = [
   '기타',
 ]
 const districts = ['종로구', '중구', '용산구', '성동구', '마포구', '서초구', '강남구', '강서구', '송파구']
-const initialDisplayCount = 12
-const pageSize = 12
+const initialDisplayCount = 20
+const pageSize = 20
 const dayInMs = 24 * 60 * 60 * 1000
 
 function AllExhibitions() {
+  const [searchParams] = useSearchParams()
+  const sortQuery = searchParams.get('sort')
   const [activeFilter, setActiveFilter] = useState('전체')
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([])
   const [selectedPeriods, setSelectedPeriods] = useState<PeriodFilter[]>([])
   const [selectedPriceTypes, setSelectedPriceTypes] = useState<AllExhibitionPriceType[]>([])
-  const [sortOption, setSortOption] = useState<SortOption>('추천순')
+  const [sortOption, setSortOption] = useState<SortOption>(() => getSortOptionFromQuery(sortQuery))
+  const [searchQuery, setSearchQuery] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [openCalendar, setOpenCalendar] = useState<'start' | 'end' | null>(null)
   const [showMoreFilters, setShowMoreFilters] = useState(false)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(initialDisplayCount)
   const [apiExhibitions, setApiExhibitions] = useState<EventSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -74,12 +81,22 @@ function AllExhibitions() {
           (periodStatus !== '종료' && selectedPeriods.includes(periodStatus))
         const matchesPrice =
           selectedPriceTypes.length === 0 || selectedPriceTypes.includes(item.priceType)
+        const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
+        const matchesSearch =
+          !normalizedQuery ||
+          [item.title, item.venue, item.category, item.district]
+            .some((value) => value.toLocaleLowerCase().includes(normalizedQuery))
 
-        return matchesFilter && matchesDistrict && matchesPeriod && matchesPrice
+        return matchesFilter && matchesDistrict && matchesPeriod && matchesPrice && matchesSearch
       })
-  }, [activeFilter, normalizedExhibitions, selectedDistricts, selectedPeriods, selectedPriceTypes, today])
+  }, [activeFilter, normalizedExhibitions, searchQuery, selectedDistricts, selectedPeriods, selectedPriceTypes, today])
   const visibleExhibitions = filteredExhibitions.slice(0, visibleCount)
   const remainingCount = Math.max(filteredExhibitions.length - visibleExhibitions.length, 0)
+
+  useEffect(() => {
+    setSortOption(getSortOptionFromQuery(sortQuery))
+    setVisibleCount(initialDisplayCount)
+  }, [sortQuery])
 
   useEffect(() => {
     let ignore = false
@@ -94,6 +111,8 @@ function AllExhibitions() {
           district: selectedDistricts,
           status: selectedPeriods.map(toApiStatus),
           free: selectedPriceTypes.map((priceType) => priceType === '무료'),
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
           sort: toEventsSort(sortOption),
         })
         const nextEvents = Array.isArray(response) ? response : response.events
@@ -119,7 +138,17 @@ function AllExhibitions() {
     return () => {
       ignore = true
     }
-  }, [activeFilter, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption])
+  }, [activeFilter, endDate, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption, startDate])
+
+  const resetFilters = () => {
+    setActiveFilter('전체')
+    setSelectedDistricts([])
+    setSelectedPeriods([])
+    setSelectedPriceTypes([])
+    setStartDate('')
+    setEndDate('')
+    setVisibleCount(initialDisplayCount)
+  }
 
   const toggleDistrict = (district: string) => {
     setVisibleCount(initialDisplayCount)
@@ -204,7 +233,6 @@ function AllExhibitions() {
           { label: '홈', to: '/' },
           { label: '둘러보기', to: '/exhibitions/all', isActive: true },
         ]}
-        showAccountLabel
       />
 
       <div className="all-shell">
@@ -214,18 +242,57 @@ function AllExhibitions() {
             <h1 id="all-title">
               지금 열리는
               <br />
-              <em>모든 전시</em>
+              <em>모든 행사</em>
             </h1>
+            <label className="all-search">
+              <span className="all-visually-hidden">행사 검색</span>
+              <input
+                type="search"
+                value={searchQuery}
+                placeholder="전시 제목, 장소, 장르 검색..."
+                onChange={(event) => {
+                  setSearchQuery(event.target.value)
+                  setVisibleCount(initialDisplayCount)
+                }}
+              />
+              <SearchIcon />
+            </label>
             <p>
-              시각 예술, 퍼포먼스, 몰입형 설치까지.
+              클래식, 전시, 연극, 무용, 축제까지.
               <br />
-              큐레이팅된 전시 전체를 탐색하세요.
+              큐레이팅된 행사 전체를 탐색하세요.
             </p>
+          </div>
+          <div className="all-active-tags" aria-label="활성 필터">
+            {activeFilter !== '전체' && (
+              <FilterTag label={activeFilter} onRemove={() => setActiveFilter('전체')} />
+            )}
+            {selectedDistricts.map((district) => (
+              <FilterTag label={district} key={district} onRemove={() => toggleDistrict(district)} />
+            ))}
+            {selectedPeriods.map((period) => (
+              <FilterTag label={period} key={period} onRemove={() => togglePeriod(period)} />
+            ))}
+            {selectedPriceTypes.map((priceType) => (
+              <FilterTag label={priceType} key={priceType} onRemove={() => togglePriceType(priceType)} />
+            ))}
+            {startDate && <FilterTag label={`${startDate}부터`} onRemove={() => setStartDate('')} />}
+            {endDate && <FilterTag label={`${endDate}까지`} onRemove={() => setEndDate('')} />}
           </div>
         </section>
 
         <div className="all-layout">
-          <aside className="all-sidebar" aria-label="전시 필터">
+          <button
+            className={isMobileFilterOpen ? 'all-filter-overlay is-open' : 'all-filter-overlay'}
+            type="button"
+            aria-label="필터 닫기"
+            onClick={() => setIsMobileFilterOpen(false)}
+          />
+          <aside className={isMobileFilterOpen ? 'all-sidebar is-open' : 'all-sidebar'} aria-label="전시 필터">
+            <div className="all-sidebar-title">
+              <strong>필터</strong>
+              <button type="button" aria-label="필터 닫기" onClick={() => setIsMobileFilterOpen(false)}>×</button>
+            </div>
             <section className="all-filter-section">
               <h2>장르</h2>
               <div className="all-filter-list">
@@ -301,16 +368,30 @@ function AllExhibitions() {
               </div>
             </section>
 
+            <section className="all-filter-section">
+              <h2>날짜 범위</h2>
+              <div className="all-date-range">
+                <DatePicker
+                  label="시작일"
+                  value={startDate}
+                  isOpen={openCalendar === 'start'}
+                  onChange={setStartDate}
+                  onToggle={() => setOpenCalendar((current) => current === 'start' ? null : 'start')}
+                />
+                <DatePicker
+                  label="종료일"
+                  value={endDate}
+                  isOpen={openCalendar === 'end'}
+                  onChange={setEndDate}
+                  onToggle={() => setOpenCalendar((current) => current === 'end' ? null : 'end')}
+                />
+              </div>
+            </section>
+
             <button
               className="all-reset"
               type="button"
-              onClick={() => {
-                setActiveFilter('전체')
-                setSelectedDistricts([])
-                setSelectedPeriods([])
-                setSelectedPriceTypes([])
-                setVisibleCount(initialDisplayCount)
-              }}
+              onClick={resetFilters}
             >
               필터 초기화
             </button>
@@ -336,6 +417,10 @@ function AllExhibitions() {
                 </select>
               </label>
             </div>
+            <button className="all-mobile-filter-button" type="button" onClick={() => setIsMobileFilterOpen(true)}>
+              <FilterIcon />
+              필터
+            </button>
 
             {isLoading && <div className="all-state" role="status">전시 목록을 불러오는 중입니다.</div>}
 
@@ -364,7 +449,7 @@ function AllExhibitions() {
                           <PosterIcon type={item.icon} />
                         )}
                         <span className={`all-badge ${getBadgeClassName(item, today)}`}>
-                          {item.status || getAvailabilityLabel(item, today)}
+                          {getAvailabilityLabel(item, today)}
                         </span>
                       </div>
                       <div className="all-card-body">
@@ -478,14 +563,16 @@ function getAvailabilityLabel(item: AllExhibition, today: Date) {
   }
 
   if (start > today) {
-    return `${getDayDifference(today, start)}일 후 관람 가능`
+    return '예정'
   }
 
   if (isSameDay(end, today)) {
     return '오늘 마감'
   }
 
-  return `D-day ${getDayDifference(today, end)}`
+  const daysUntilEnd = getDayDifference(today, end)
+
+  return daysUntilEnd <= 7 ? `D-${daysUntilEnd}` : '진행중'
 }
 
 function getBadgeClassName(item: AllExhibition, today: Date) {
@@ -522,6 +609,37 @@ function createLocalDate(year: number, month: number, day: number) {
 
 function startOfDay(date: Date) {
   return createLocalDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+}
+
+function getMonthStart(value = '') {
+  const date = value ? parseIsoDate(value) : new Date()
+
+  return createLocalDate(date.getFullYear(), date.getMonth() + 1, 1)
+}
+
+function addMonths(date: Date, amount: number) {
+  return createLocalDate(date.getFullYear(), date.getMonth() + 1 + amount, 1)
+}
+
+function getCalendarDays(month: Date) {
+  const firstDayIndex = month.getDay()
+  const lastDate = createLocalDate(month.getFullYear(), month.getMonth() + 2, 0).getDate()
+
+  return [
+    ...Array.from({ length: firstDayIndex }, () => null),
+    ...Array.from(
+      { length: lastDate },
+      (_, index) => createLocalDate(month.getFullYear(), month.getMonth() + 1, index + 1),
+    ),
+  ]
+}
+
+function formatDateInput(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
 }
 
 function getDayDifference(from: Date, to: Date) {
@@ -589,6 +707,17 @@ function toEventsSort(sortOption: SortOption): EventsSort {
   return sortByOption[sortOption]
 }
 
+function getSortOptionFromQuery(sort: string | null): SortOption {
+  const sortByQuery: Partial<Record<EventsSort, SortOption>> = {
+    match: '추천순',
+    deadline: '마감 임박순',
+    latest: '최신순',
+    rating: '평점순',
+  }
+
+  return sort && sort in sortByQuery ? sortByQuery[sort as EventsSort] ?? '추천순' : '추천순'
+}
+
 function toApiStatus(status: PeriodFilter) {
   return status === '진행중' ? 'ongoing' : 'upcoming'
 }
@@ -628,6 +757,108 @@ function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={open ? 'is-open' : ''}>
       <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
+function FilterTag({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button type="button" onClick={onRemove}>
+      {label}
+      <span aria-hidden="true">×</span>
+    </button>
+  )
+}
+
+function DatePicker({
+  label,
+  value,
+  isOpen,
+  onChange,
+  onToggle,
+}: {
+  label: string
+  value: string
+  isOpen: boolean
+  onChange: (value: string) => void
+  onToggle: () => void
+}) {
+  const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(value))
+  const days = getCalendarDays(visibleMonth)
+
+  const handleToggle = () => {
+    if (!isOpen) {
+      setVisibleMonth(getMonthStart(value))
+    }
+
+    onToggle()
+  }
+
+  return (
+    <div className="all-date-picker">
+      <span>{label}</span>
+      <button className="all-date-trigger" type="button" aria-expanded={isOpen} onClick={handleToggle}>
+        {value ? formatDate(value) : '날짜 선택'}
+        <CalendarIcon />
+      </button>
+      {isOpen && (
+        <div className="all-calendar" role="dialog" aria-label={`${label} 선택`}>
+          <div className="all-calendar-head">
+            <button
+              type="button"
+              aria-label="이전 달"
+              onClick={() => setVisibleMonth((month) => addMonths(month, -1))}
+            >
+              ‹
+            </button>
+            <strong>{visibleMonth.getFullYear()}년 {visibleMonth.getMonth() + 1}월</strong>
+            <button
+              type="button"
+              aria-label="다음 달"
+              onClick={() => setVisibleMonth((month) => addMonths(month, 1))}
+            >
+              ›
+            </button>
+          </div>
+          <div className="all-calendar-weekdays" aria-hidden="true">
+            {['일', '월', '화', '수', '목', '금', '토'].map((weekday) => <span key={weekday}>{weekday}</span>)}
+          </div>
+          <div className="all-calendar-days">
+            {days.map((day, index) => day ? (
+              <button
+                className={formatDateInput(day) === value ? 'is-selected' : ''}
+                type="button"
+                key={formatDateInput(day)}
+                onClick={() => {
+                  onChange(formatDateInput(day))
+                  onToggle()
+                }}
+              >
+                {day.getDate()}
+              </button>
+            ) : <span key={`empty-${index}`} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="5.5" />
+      <path d="m15 15 4 4" />
+    </svg>
+  )
+}
+
+function FilterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h16" />
+      <path d="M7 12h10" />
+      <path d="M10 17h4" />
     </svg>
   )
 }

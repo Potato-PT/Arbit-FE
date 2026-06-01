@@ -2,19 +2,19 @@
 
 Arbit UI는 전시와 문화 행사를 탐색하고, 전시 상세와 리뷰를 확인하며, 사용자 프로필을 관리할 수 있는 React 프론트엔드 프로젝트입니다. React, TypeScript, Vite, React Router를 사용합니다.
 
-홈, 전시 목록, 전시 검색, 전시 상세, 후기 작성, 취향 선택, 로그인/회원가입, 마이페이지 흐름은 설정된 백엔드 base URL을 사용하는 API 함수와 연결되어 있습니다.
+홈, 전시 목록, 전시 상세, 후기 작성, 취향 선택, 로그인/회원가입, 마이페이지 흐름은 설정된 백엔드 base URL을 사용하는 API 함수와 연결되어 있습니다.
 
 ## 주요 기능
 
-- 홈 화면에서 대표 전시와 개인화 추천 전시 카드를 확인합니다.
+- 홈 화면에서 로그인 상태에 따라 게스트용 행사 목록 또는 개인화 추천 전시 카드를 확인합니다.
 - 전시 전체보기 화면에서 필터와 정렬을 사용해 API 전시 목록을 탐색합니다.
-- 전시 검색 화면에서 키워드, 지역, 장르, 기간, 가격, 거리순 정렬을 사용합니다.
+- 전시 전체보기 화면에서 키워드 검색, 지역, 장르, 기간, 가격 필터와 정렬을 사용합니다.
 - 전시 상세 화면에서 API 전시 정보와 리뷰를 확인합니다.
 - 후기 작성 화면에서 API로 리뷰를 등록합니다.
-- 홈과 전시 전체보기 화면에서 전시 북마크를 추가하거나 삭제합니다.
+- 로그인 후 홈과 전시 전체보기 화면에서 전시 북마크를 추가하거나 삭제합니다. 게스트가 홈 카드의 북마크를 누르면 로그인 화면으로 이동합니다.
 - 로그인과 회원가입 성공 시 `accessToken`, `refreshToken`을 저장합니다.
 - 로그인 후 저장된 취향 선택 이력이 있으면 개인화 추천을 불러옵니다.
-- 취향 선택 화면에서 API로 이벤트 후보를 불러오고 4~5개 선택 결과를 저장합니다.
+- 회원가입 직후 취향 선택 화면에서 API로 이벤트 후보를 불러오고 5개의 선택 결과를 저장합니다.
 - 마이페이지에서 프로필 조회, 닉네임 수정, 프로필 이미지 업로드, 내 리뷰 목록, 북마크 목록, 로그아웃을 사용할 수 있습니다.
 
 ## 시작하기
@@ -53,14 +53,15 @@ VITE_API_PROXY_TARGET
 라우트는 `src/main.tsx`에 선언되어 있습니다.
 
 - `/`: 홈
-- `/exhibitions/search`: 전시 검색
 - `/exhibitions/all`: 전시 전체보기
 - `/exhibitions/:id`: 전시 상세
 - `/exhibitions/:id/review`: 후기 작성
 - `/user/login`: 로그인
 - `/user/signup`: 회원가입
-- `/user/preferences`: 취향 선택
+- `/user/preferences`: 회원가입 직후 최초 취향 선택
 - `/user/mypage`: 마이페이지
+
+기존 `/exhibitions/search`, `/exhibition/all` 경로는 `/exhibitions/all`로 이동합니다.
 
 ## 프로젝트 구조
 
@@ -75,10 +76,14 @@ src/
   components/           # 공통 AppHeader, AppFooter
   features/
     exhibitions/
-      api/              # 전시 목록, 검색, 상세, 리뷰 API 함수
+      api/              # 전시 목록, 상세, 리뷰 API 함수
       pages/            # 전시 관련 라우트 화면
       styles/           # 전시 화면 CSS
       types/            # 전시 데이터 타입
+    home/
+      components/       # 홈 행사 카드 섹션
+      pages/            # 게스트용, 로그인 사용자용 홈 화면
+      utils/            # 홈 날짜 계산 유틸
     user/
       api/              # 인증과 마이페이지 API 함수
       pages/            # 로그인, 회원가입, 취향 선택, 마이페이지
@@ -103,7 +108,6 @@ API base URL은 `src/api/config.ts`의 설정을 사용합니다.
 전시 API 함수는 `src/features/exhibitions/api/eventsApi.ts`에 있습니다.
 
 - `GET /api/events`
-- `GET /api/events/search`
 - `GET /api/events/{eventId}`
 - `POST /api/events/{eventId}/reviews`
 - `GET /api/events/{eventId}/reviews`
@@ -134,19 +138,20 @@ API base URL은 `src/api/config.ts`의 설정을 사용합니다.
 
 토큰이 필요한 요청은 `Authorization: Bearer {accessToken}` 헤더를 포함합니다. 파일 업로드 요청은 `FormData`를 사용하며 `Content-Type`을 직접 지정하지 않습니다. 마이페이지 계열, 리뷰 작성, 취향 저장, 북마크 추가/삭제 요청에서 401이 발생하면 저장된 인증 상태를 삭제하고 `/user/login`으로 이동합니다.
 
-취향 저장 요청은 선택한 이벤트 ID 배열을 `{ success: true, data: selectedEventIds, error: null }` 형태로 감싸서 전송합니다. 응답으로 받은 4~5개의 이벤트 ID는 사용자 아이디별 `localStorage` 캐시에 저장합니다. 홈 추천 API는 로그인 사용자 전용이며, 캐시된 ID를 반복 `eventIds` query parameter로 전송합니다. 유효한 JWT 또는 현재 사용자의 저장된 이벤트 ID가 없으면 추천 API를 호출하지 않습니다. 로그인 직후와 홈 화면의 로고 클릭 시에도 개인화 추천 조회를 시도합니다.
+취향 저장 요청은 회원가입 직후 session 상태가 남아 있는 onboarding 흐름에서만 사용할 수 있습니다. 선택한 이벤트 ID 배열을 `{ success: true, data: selectedEventIds, error: null }` 형태로 감싸서 전송합니다. 화면에서는 이벤트를 정확히 5개 선택해야 저장할 수 있습니다. 응답으로 받은 이벤트 ID는 사용자 아이디별 `localStorage` 캐시에 저장합니다. 홈 추천 API는 로그인 사용자 전용이며, 캐시된 4~5개 ID를 반복 `eventIds` query parameter로 전송합니다. 유효한 JWT 또는 현재 사용자의 저장된 이벤트 ID가 없으면 추천 API를 호출하지 않습니다. 로그인 직후와 홈 화면의 로고 클릭 시에도 개인화 추천 조회를 시도합니다.
 
 ## 데이터 소스
 
-화면에 표시하는 이벤트, 추천, 취향 선택, 마이페이지 데이터는 API에서 불러옵니다. 전시 전체보기와 검색의 필터 선택지는 해당 페이지의 UI 상수로 관리합니다.
+화면에 표시하는 이벤트, 추천, 취향 선택, 마이페이지 데이터는 API에서 불러옵니다. 전시 전체보기의 필터 선택지는 해당 페이지의 UI 상수로 관리합니다.
 
 홈은 `src/api/homeApi.ts`, 전시 탐색/상세/리뷰 작성은 `src/features/exhibitions/api/eventsApi.ts`, 북마크 추가/삭제는 `src/features/exhibitions/api/bookmarksApi.ts`, 취향 선택은 `src/features/user/api/preferencesApi.ts`, 마이페이지의 프로필/리뷰/북마크 목록은 `src/features/user/api/myPageApi.ts`의 API 함수를 통해 처리합니다.
 
 ## 현재 구현 범위
 
-- 검색 화면의 거리순 정렬은 브라우저 위치 권한을 사용할 수 있으면 `lat`, `lng`를 함께 전송합니다.
-- 전시 전체보기와 검색 화면의 `더 보기`는 이미 받은 목록을 화면에서 12개씩 나누어 보여줍니다.
-- 검색 화면 카드의 하트, 로그인 화면의 `로그인 유지`와 `계정 찾기`, 마이페이지의 북마크 하트와 후기 공유 버튼은 현재 UI만 제공하며 별도 동작은 연결되어 있지 않습니다.
+- 기존 전시 검색 화면은 전시 전체보기 화면으로 통합되었습니다. `/exhibitions/search`는 `/exhibitions/all`로 이동합니다.
+- 전시 전체보기의 장르, 지역, 기간, 관람료, 날짜, 정렬 조건은 API 요청에 포함됩니다. 키워드 검색은 받은 목록을 브라우저에서 필터링합니다.
+- 전시 전체보기의 `더 보기`는 이미 받은 목록을 화면에서 20개씩 나누어 보여줍니다.
+- 로그인 화면의 `로그인 유지`와 `계정 찾기`, 마이페이지의 북마크 하트와 후기 공유 버튼은 현재 UI만 제공하며 별도 동작은 연결되어 있지 않습니다.
 - 후기 작성 API에는 `rating`, `content`, `verificationImageUrl`을 전송합니다. 방문 시점과 공개 여부는 현재 폼에서만 관리합니다.
 
 ## 개발 참고

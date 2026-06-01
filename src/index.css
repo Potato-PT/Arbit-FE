@@ -1,6 +1,7 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
 
 :root {
+  --app-content-gutter: clamp(40px, 8vw, 112px);
   --font-sans:
     "Pretendard Variable", Pretendard, Inter, ui-sans-serif, system-ui,
     -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -11,6 +12,12 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --app-content-gutter: 26px;
+  }
 }
 
 #root {

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
-import AppFooter from '../../../components/AppFooter'
-import { saveRecommendationEventIds } from '../../../api/authStorage'
+import {
+  completePreferencesOnboarding,
+  hasPreferencesOnboarding,
+  saveRecommendationEventIds,
+} from '../../../api/authStorage'
 import { ApiError } from '../api/authApi'
 import {
   getPreferenceCategories,
@@ -11,27 +14,32 @@ import {
 } from '../api/preferencesApi'
 import '../styles/Preferences.css'
 
-const MIN_SELECTED_EVENT_COUNT = 4
+const MIN_SELECTED_EVENT_COUNT = 5
 const MAX_SELECTED_EVENT_COUNT = 5
-const VISIBLE_EVENT_COUNT = 3
-const FILM_HOLE_COUNT = 10
+const PAGE_SIZE = 15
 
 function Preferences() {
+  const location = useLocation()
   const navigate = useNavigate()
+  const isSignupOnboarding =
+    isSignupOnboardingState(location.state) &&
+    hasPreferencesOnboarding()
   const [seedEvents, setSeedEvents] = useState<PreferenceSeedEvent[]>([])
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([])
   const [failedImageIds, setFailedImageIds] = useState<string[]>([])
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [visibleEventCount, setVisibleEventCount] = useState(PAGE_SIZE)
   const [isLoadingCategories, setIsLoadingCategories] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const maxStartIndex = Math.max(0, seedEvents.length - VISIBLE_EVENT_COUNT)
-  const selectedEvents = useMemo(
-    () => seedEvents.filter((seedEvent) => selectedEventIds.includes(seedEvent.event_id)),
-    [seedEvents, selectedEventIds],
-  )
+  const hasMetMinimum = selectedEventIds.length >= MIN_SELECTED_EVENT_COUNT
+  const visibleEvents = seedEvents.slice(0, visibleEventCount)
 
   useEffect(() => {
+    if (!isSignupOnboarding) {
+      navigate('/', { replace: true })
+      return
+    }
+
     let ignore = false
 
     async function loadPreferenceCategories() {
@@ -65,11 +73,7 @@ function Preferences() {
     return () => {
       ignore = true
     }
-  }, [])
-
-  useEffect(() => {
-    setCurrentIndex((index) => Math.min(index, maxStartIndex))
-  }, [maxStartIndex])
+  }, [isSignupOnboarding, navigate])
 
   const toggleSeedEvent = (eventId: string) => {
     setSelectedEventIds((currentEventIds) => {
@@ -90,7 +94,7 @@ function Preferences() {
   }
 
   const handleSubmit = async () => {
-    if (isSubmitting || selectedEventIds.length < MIN_SELECTED_EVENT_COUNT) {
+    if (isSubmitting || !hasMetMinimum) {
       return
     }
 
@@ -101,7 +105,8 @@ function Preferences() {
       const eventIds = await savePreferences(selectedEventIds)
 
       saveRecommendationEventIds(eventIds)
-      navigate('/')
+      completePreferencesOnboarding()
+      navigate('/', { replace: true })
     } catch (error) {
       if (error instanceof ApiError && error.status === 400) {
         setErrorMessage(error.message)
@@ -115,30 +120,33 @@ function Preferences() {
     }
   }
 
+  if (!isSignupOnboarding) {
+    return null
+  }
+
   return (
     <main className="preferences-page" aria-label="취향 선택">
       <AppHeader variant="warm" />
 
       <div className="preferences-shell">
-        <div className="preferences-progress" aria-label="회원가입 진행 단계">
-          <span className="is-active" />
-          <span className="is-active" />
-          <span />
-        </div>
-
-        <section className="preferences-hero" aria-labelledby="preferences-title">
-          <span className="preferences-overline">Curating Your Vision</span>
-          <h1 id="preferences-title">
-            마음에 드는 전시·공연을
-            <br />
-            <em>골라주세요.</em>
-          </h1>
-          <p>
-            예전에 관람했거나, 아직 관람하지 않았지만 마음에 드는 작품을 선택해 주세요.
-            <br />
-            관심 있는 전시·공연을 4~5개 선택하면 맞춤 추천을 준비해 드립니다.
-          </p>
+        <section className="preferences-intro" aria-labelledby="preferences-title">
+          <div>
+            <h1 id="preferences-title">
+              당신의 취향이 될
+              <br />
+              전시·공연을 선택해 주세요
+            </h1>
+          </div>
+          <span className={hasMetMinimum ? 'preferences-count is-ready' : 'preferences-count'}>
+            <HeartIcon />
+            {selectedEventIds.length}개 선택
+          </span>
         </section>
+
+        <p className="preferences-description">
+          마음에 드는 항목을 <strong>최소 {MIN_SELECTED_EVENT_COUNT}개 이상</strong> 선택해 주세요.
+          선택하신 취향을 바탕으로 당신만의 큐레이션이 시작됩니다.
+        </p>
 
         {isLoadingCategories ? (
           <PreferencesStatus>취향 선택 이벤트를 불러오는 중입니다.</PreferencesStatus>
@@ -151,184 +159,122 @@ function Preferences() {
             )}
 
             {seedEvents.length > 0 && (
-              <section className="preferences-selection" aria-labelledby="seed-events-title">
-                <div className="preferences-section-header">
-                  <h2 id="seed-events-title">
-                    <span>02</span>
-                    전시·공연 선택
-                  </h2>
-                  <p>
-                    <strong>{selectedEventIds.length}</strong> / {MAX_SELECTED_EVENT_COUNT} 선택됨
-                  </p>
-                </div>
-
-                <div className="preferences-film-viewer">
-                  <button
-                    className="preferences-film-arrow is-left"
-                    type="button"
-                    aria-label="이전 이벤트 보기"
-                    disabled={currentIndex === 0}
-                    onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    className="preferences-film-arrow is-right"
-                    type="button"
-                    aria-label="다음 이벤트 보기"
-                    disabled={currentIndex === maxStartIndex}
-                    onClick={() => setCurrentIndex((index) => Math.min(maxStartIndex, index + 1))}
-                  >
-                    ›
-                  </button>
-
-                  <div className="preferences-film-outer">
-                    <FilmHoles position="top" />
-                    <div className="preferences-film-viewport">
-                      <div
-                        className="preferences-film-track"
-                        style={{ transform: `translateX(-${currentIndex * (100 / VISIBLE_EVENT_COUNT)}%)` }}
-                      >
-                        {seedEvents.map((seedEvent, index) => {
-                          const isSelected = selectedEventIds.includes(seedEvent.event_id)
-                          const isDisabled =
-                            !isSelected && selectedEventIds.length >= MAX_SELECTED_EVENT_COUNT
-                          const hasPoster =
-                            Boolean(seedEvent.posterImage) &&
-                            !failedImageIds.includes(seedEvent.event_id)
-
-                          return (
-                            <button
-                              className={[
-                                'preferences-film-frame',
-                                isSelected ? 'is-selected' : '',
-                                isDisabled ? 'is-dimmed' : '',
-                              ].filter(Boolean).join(' ')}
-                              type="button"
-                              aria-pressed={isSelected}
-                              disabled={isDisabled}
-                              key={seedEvent.event_id}
-                              onClick={() => toggleSeedEvent(seedEvent.event_id)}
-                            >
-                              <span className="preferences-frame-poster">
-                                {hasPoster ? (
-                                  <img
-                                    src={seedEvent.posterImage}
-                                    alt=""
-                                    onError={() => handleImageError(seedEvent.event_id)}
-                                  />
-                                ) : (
-                                  <span className="preferences-frame-placeholder">
-                                    <span aria-hidden="true">◇</span>
-                                    <small>Poster</small>
-                                  </span>
-                                )}
-                              </span>
-                              <span className="preferences-frame-badge" aria-hidden="true">✦</span>
-                              <span className="preferences-frame-meta">
-                                <small>{String(index + 1).padStart(3, '0')}</small>
-                                <strong>{seedEvent.title}</strong>
-                                <em>{seedEvent.genre}</em>
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    <FilmHoles position="bottom" />
-                  </div>
-                </div>
-
-                <div className="preferences-film-index" aria-label="이벤트 목록 위치">
-                  {Array.from({ length: maxStartIndex + 1 }, (_, index) => {
-                    const hasSelectedEvent = seedEvents
-                      .slice(index, index + VISIBLE_EVENT_COUNT)
-                      .some((seedEvent) => selectedEventIds.includes(seedEvent.event_id))
+              <>
+                <section className="preferences-grid" aria-label="전시·공연 목록">
+                  {visibleEvents.map((seedEvent) => {
+                    const isSelected = selectedEventIds.includes(seedEvent.event_id)
+                    const hasPoster =
+                      Boolean(seedEvent.posterImage) &&
+                      !failedImageIds.includes(seedEvent.event_id)
 
                     return (
                       <button
                         className={[
-                          'preferences-film-dot',
-                          index === currentIndex ? 'is-active' : '',
-                          hasSelectedEvent ? 'has-selection' : '',
+                          'preferences-card',
+                          isSelected ? 'is-selected' : '',
                         ].filter(Boolean).join(' ')}
                         type="button"
-                        aria-label={`${index + 1}번째 이벤트 묶음 보기`}
-                        aria-current={index === currentIndex ? 'true' : undefined}
-                        key={index}
-                        onClick={() => setCurrentIndex(index)}
-                      />
+                        aria-pressed={isSelected}
+                        key={seedEvent.event_id}
+                        onClick={() => toggleSeedEvent(seedEvent.event_id)}
+                      >
+                        <span className="preferences-card-poster">
+                          {hasPoster ? (
+                            <img
+                              src={seedEvent.posterImage}
+                              alt=""
+                              onError={() => handleImageError(seedEvent.event_id)}
+                            />
+                          ) : (
+                            <span className="preferences-card-placeholder">
+                              <span aria-hidden="true">◇</span>
+                              <small>Poster</small>
+                            </span>
+                          )}
+                          <span className="preferences-card-overlay" />
+                          <span className="preferences-card-check" aria-hidden="true">✓</span>
+                        </span>
+                        <span className="preferences-card-info">
+                          <small>{seedEvent.genre}</small>
+                          <strong>{seedEvent.title}</strong>
+                        </span>
+                      </button>
                     )
                   })}
-                </div>
+                </section>
 
-                <div className="preferences-counter-bar">
-                  <span>내 컬렉션</span>
-                  <div>
-                    {Array.from({ length: MAX_SELECTED_EVENT_COUNT }, (_, index) => (
-                      <i
-                        className={index < selectedEventIds.length ? 'is-filled' : ''}
-                        aria-hidden="true"
-                        key={index}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {selectedEvents.length > 0 && (
-                  <div className="preferences-summary">
-                    <h3>선택한 전시·공연</h3>
-                    <div>
-                      {selectedEvents.map((seedEvent) => (
-                        <span key={seedEvent.event_id}>
-                          {seedEvent.title}
-                          <button
-                            type="button"
-                            title={`${seedEvent.title} 제거`}
-                            aria-label={`${seedEvent.title} 제거`}
-                            onClick={() => toggleSeedEvent(seedEvent.event_id)}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                {visibleEventCount < seedEvents.length && (
+                  <button
+                    className="preferences-load-more"
+                    type="button"
+                    onClick={() => setVisibleEventCount((count) => count + PAGE_SIZE)}
+                  >
+                    <span aria-hidden="true">⌄</span>
+                    더 보기
+                  </button>
                 )}
-              </section>
+              </>
             )}
           </>
         )}
+      </div>
 
-        <div className="preferences-cta">
+      <div className="preferences-bottom-bar">
+        <div className="preferences-bottom-inner">
+          <div className="preferences-bottom-status">
+            <div className="preferences-dots" aria-hidden="true">
+              {Array.from({ length: MAX_SELECTED_EVENT_COUNT }, (_, index) => (
+                <i
+                  className={[
+                    index < selectedEventIds.length ? 'is-filled' : '',
+                    hasMetMinimum ? 'is-ready' : '',
+                  ].filter(Boolean).join(' ')}
+                  key={index}
+                />
+              ))}
+            </div>
+            <span>{getSelectionHint(selectedEventIds.length)}</span>
+          </div>
           <button
+            className="preferences-submit"
             type="button"
-            disabled={
-              isLoadingCategories ||
-              isSubmitting ||
-              selectedEventIds.length < MIN_SELECTED_EVENT_COUNT
-            }
+            disabled={isLoadingCategories || isSubmitting || !hasMetMinimum}
             onClick={handleSubmit}
           >
-            {isSubmitting ? '저장 중' : '선택 완료'}
+            {isSubmitting ? '저장 중...' : '큐레이션 시작하기'}
           </button>
-          <p>
-            {selectedEventIds.length < MIN_SELECTED_EVENT_COUNT
-              ? `관심 있는 전시·공연을 4~5개 선택해주세요. 현재 ${selectedEventIds.length}개 선택했습니다.`
-              : '취향 정보는 언제든 수정할 수 있습니다'}
-          </p>
         </div>
       </div>
-      <AppFooter />
     </main>
   )
 }
 
-function FilmHoles({ position }: { position: 'top' | 'bottom' }) {
+function isSignupOnboardingState(state: unknown) {
   return (
-    <div className={`preferences-film-holes is-${position}`} aria-hidden="true">
-      {Array.from({ length: FILM_HOLE_COUNT }, (_, index) => <span key={index} />)}
-    </div>
+    typeof state === 'object' &&
+    state !== null &&
+    'fromSignup' in state &&
+    state.fromSignup === true
+  )
+}
+
+function getSelectionHint(selectedCount: number) {
+  if (selectedCount === 0) {
+    return `최소 ${MIN_SELECTED_EVENT_COUNT}개 이상 선택해 주세요`
+  }
+
+  if (selectedCount < MIN_SELECTED_EVENT_COUNT) {
+    return `${MIN_SELECTED_EVENT_COUNT - selectedCount}개 더 선택해 주세요`
+  }
+
+  return `${selectedCount}개 선택 완료`
+}
+
+function HeartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 20.2 4.3 12.7C-.1 8.3 6.2 1.9 10.6 6.3L12 7.7l1.4-1.4c4.4-4.4 10.7 2 6.3 6.4Z" />
+    </svg>
   )
 }
 

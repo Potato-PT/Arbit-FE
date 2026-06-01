@@ -4,7 +4,6 @@ import { createAuthorizationHeaders } from '../../../api/headers'
 import { ApiError } from '../../user/api/authApi'
 
 export type EventsSort = 'match' | 'deadline' | 'latest' | 'rating'
-export type EventSearchSort = 'distance' | 'deadline' | 'upcoming'
 export type EventStatus = 'ongoing' | 'upcoming' | 'ended' | '진행중' | '예정' | '종료'
 
 export type EventSummary = {
@@ -77,23 +76,7 @@ export type EventsQuery = {
   sort?: EventsSort
 }
 
-export type EventSearchQuery = {
-  title?: string
-  category?: string
-  district?: string[]
-  status?: EventStatus[]
-  free?: boolean[]
-  sort?: EventSearchSort
-  lat?: number
-  lng?: number
-}
-
 export type EventsResponse = {
-  events: EventSummary[]
-  totalCount?: number
-}
-
-export type EventSearchResponse = {
   events: EventSummary[]
   totalCount?: number
 }
@@ -218,20 +201,6 @@ export async function getEvents(query: EventsQuery = {}) {
   }
 
   throw new ApiError('전시 목록 응답 형식이 올바르지 않습니다.', response.status)
-}
-
-export async function searchEvents(query: EventSearchQuery = {}) {
-  const response = await fetch(`${API_BASE_URL}${EVENTS_API_PATH}/search${createQueryString(query)}`, {
-    method: 'GET',
-  })
-
-  const result = await parseEventsResponse<EventSearchResponse | EventSummary[]>(response)
-
-  if (Array.isArray(result) || Array.isArray(result.events)) {
-    return result
-  }
-
-  throw new ApiError('전시 검색 응답 형식이 올바르지 않습니다.', response.status)
 }
 
 export async function getEventDetail(eventId: string) {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'r
 import { Link, useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { clearAuthStorage } from '../../../api/authStorage'
+import { beginPreferencesOnboarding, clearAuthStorage } from '../../../api/authStorage'
 import {
   getMyBookmarks,
   getMyProfile,
@@ -18,12 +18,11 @@ import type {
 } from '../types/myPageApi'
 import '../styles/MyPage.css'
 
-type MyPageTab = 'favorites' | 'reviews' | 'preferences'
+type MyPageTab = 'favorites' | 'reviews'
 
 const tabs: { id: MyPageTab; label: string }[] = [
   { id: 'favorites', label: '즐겨찾기' },
   { id: 'reviews', label: '나의 후기' },
-  { id: 'preferences', label: '취향 설정' },
 ]
 
 function MyPage() {
@@ -208,6 +207,11 @@ function MyPage() {
     }
   }
 
+  const handleOpenPreferencesTest = () => {
+    beginPreferencesOnboarding()
+    navigate('/user/preferences', { state: { fromSignup: true } })
+  }
+
   return (
     <main className="mypage" aria-label="마이페이지">
       <AppHeader />
@@ -319,34 +323,30 @@ function MyPage() {
       <section className="mypage-content" aria-label="마이페이지 콘텐츠">
         <div className="mypage-tabs" role="tablist" aria-label="마이페이지 탭">
           {tabs.map((tab) => (
-            tab.id === 'preferences' ? (
-              <Link className="mypage-tab" role="tab" aria-selected="false" key={tab.id} to="/user/preferences">
-                {tab.label}
-              </Link>
-            ) : (
-              <button
-                className={activeTab === tab.id ? 'mypage-tab is-active' : 'mypage-tab'}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            )
+            <button
+              className={activeTab === tab.id ? 'mypage-tab is-active' : 'mypage-tab'}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
           ))}
+          <button
+            className="mypage-tab is-test"
+            type="button"
+            onClick={handleOpenPreferencesTest}
+          >
+            취향 설정
+          </button>
         </div>
 
         {activeTab === 'favorites' && (
           <FavoritesPanel tasteKeywords={tasteKeywords} />
         )}
         {activeTab === 'reviews' && <ReviewsPanel tasteKeywords={tasteKeywords} />}
-        {activeTab === 'preferences' && (
-          <div className="mypage-empty" role="tabpanel">
-            <p>취향 설정 화면은 기존 구조를 유지합니다.</p>
-          </div>
-        )}
       </section>
 
       <AppFooter />
@@ -561,7 +561,7 @@ function FavoritesPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
       {!isBookmarksLoading && !bookmarksError && bookmarks.length === 0 && (
         <div className="favorite-empty" role="status">
           <p>북마크한 행사가 없습니다.</p>
-          <Link to="/exhibitions/search">전시 검색으로 이동</Link>
+          <Link to="/exhibitions/all">행사 목록으로 이동</Link>
         </div>
       )}
     </div>

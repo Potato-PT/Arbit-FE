@@ -1,5 +1,7 @@
 .mypage {
   min-height: 100svh;
+  width: 100vw;
+  margin: 0 calc(50% - 50vw);
   background: #ffffff;
   color: #4f4a45;
   font-family: var(--font-sans);
@@ -24,7 +26,7 @@
   display: flex;
   align-items: center;
   gap: 28px;
-  padding: 52px clamp(42px, 7.2vw, 80px) 54px;
+  padding: 52px var(--app-content-gutter) 54px;
 }
 
 .profile-avatar {
@@ -243,7 +245,7 @@
 }
 
 .mypage-content {
-  padding: 0 clamp(42px, 7.2vw, 80px) 132px;
+  padding: 0 var(--app-content-gutter) 132px;
 }
 
 .mypage-tabs {
@@ -272,6 +274,12 @@
 .mypage-tab.is-active {
   background: #dec4a4;
   color: #5c5044;
+}
+
+.mypage-tab.is-test {
+  border: 1px dashed #c8a985;
+  background: #fffaf3;
+  color: #8c6d4d;
 }
 
 .preference-block {
@@ -551,16 +559,15 @@
 }
 
 .review-status {
-  max-width: 940px;
-  margin-bottom: 24px;
-  padding: 28px;
+  width: 100%;
+  margin-top: 28px;
+  padding: 34px;
   border: 1px solid #ece5dc;
   border-radius: 24px;
   background: #fbfaf8;
-  color: #8a8077;
+  color: #4b4641;
   text-align: center;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
 }
 
 .review-status.is-error {
@@ -811,7 +818,7 @@
 @media (max-width: 640px) {
   .profile-section {
     align-items: flex-start;
-    padding: 34px 22px 42px;
+    padding: 34px var(--app-content-gutter) 42px;
   }
 
   .profile-avatar {
@@ -828,7 +835,7 @@
   }
 
   .mypage-content {
-    padding: 0 22px 84px;
+    padding: 0 var(--app-content-gutter) 84px;
   }
 
   .mypage-tab {

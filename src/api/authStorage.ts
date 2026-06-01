@@ -5,6 +5,7 @@ export const ACCESS_TOKEN_STORAGE_KEY = 'accessToken'
 export const REFRESH_TOKEN_STORAGE_KEY = 'refreshToken'
 export const AUTHENTICATED_USERNAME_STORAGE_KEY = 'arbit.authenticatedUsername'
 export const RECOMMENDATION_EVENT_IDS_STORAGE_KEY = 'arbit.recommendationEventIdsByUsername'
+export const PREFERENCES_ONBOARDING_STORAGE_KEY = 'arbit.preferencesOnboarding'
 
 function readLocalStorage(key: string) {
   if (typeof window === 'undefined') {
@@ -77,6 +78,30 @@ export function saveAuthenticatedUsername(username: string) {
   }
 
   window.localStorage.setItem(AUTHENTICATED_USERNAME_STORAGE_KEY, username)
+}
+
+export function beginPreferencesOnboarding() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.sessionStorage.setItem(PREFERENCES_ONBOARDING_STORAGE_KEY, 'true')
+}
+
+export function hasPreferencesOnboarding() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.sessionStorage.getItem(PREFERENCES_ONBOARDING_STORAGE_KEY) === 'true'
+}
+
+export function completePreferencesOnboarding() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.sessionStorage.removeItem(PREFERENCES_ONBOARDING_STORAGE_KEY)
 }
 
 export function saveRecommendationEventIds(eventIds: string[]) {
@@ -158,5 +183,6 @@ export function clearAuthStorage() {
   window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
   window.localStorage.removeItem(AUTH_STORAGE_KEY)
   window.localStorage.removeItem(AUTHENTICATED_USERNAME_STORAGE_KEY)
+  window.sessionStorage.removeItem(PREFERENCES_ONBOARDING_STORAGE_KEY)
   window.dispatchEvent(new Event('arbit-auth-change'))
 }

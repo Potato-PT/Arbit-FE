@@ -1,5 +1,7 @@
 .review-write-page {
   min-height: 100svh;
+  width: 100vw;
+  margin: 0 calc(50% - 50vw);
   background: #ffffff;
   color: #262321;
   font-family: var(--font-sans);
@@ -10,7 +12,7 @@
   display: grid;
   grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
   gap: clamp(34px, 6vw, 72px);
-  padding: 38px 48px 120px;
+  padding: 38px var(--app-content-gutter) 120px;
 }
 
 .review-write-intro {
@@ -278,7 +280,7 @@
 }
 
 .review-write-missing {
-  padding: 80px 48px;
+  padding: 80px var(--app-content-gutter);
 }
 
 .review-write-missing h1 {
@@ -295,7 +297,7 @@
 @media (max-width: 860px) {
   .review-write-shell {
     grid-template-columns: 1fr;
-    padding: 22px 24px 96px;
+    padding: 22px var(--app-content-gutter) 96px;
   }
 
   .review-write-form {

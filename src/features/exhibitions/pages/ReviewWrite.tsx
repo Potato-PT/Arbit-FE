@@ -73,7 +73,7 @@ function ReviewWrite() {
         <AppHeader />
         <section className="review-write-missing">
           <h1>전시를 찾을 수 없습니다</h1>
-          <Link to="/exhibitions/search">전시 검색으로 돌아가기</Link>
+          <Link to="/exhibitions/all">행사 목록으로 돌아가기</Link>
         </section>
       </main>
     )
