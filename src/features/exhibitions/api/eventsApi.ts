@@ -173,8 +173,7 @@ function isApiResponse<T>(result: ApiResponse<T> | T): result is ApiResponse<T> 
     typeof result === 'object' &&
     result !== null &&
     'success' in result &&
-    'data' in result &&
-    'error' in result
+    'data' in result
   )
 }
 
@@ -212,7 +211,13 @@ export async function getEvents(query: EventsQuery = {}) {
     method: 'GET',
   })
 
-  return parseEventsResponse<EventsResponse | EventSummary[]>(response)
+  const result = await parseEventsResponse<EventsResponse | EventSummary[]>(response)
+
+  if (Array.isArray(result) || Array.isArray(result.events)) {
+    return result
+  }
+
+  throw new ApiError('전시 목록 응답 형식이 올바르지 않습니다.', response.status)
 }
 
 export async function searchEvents(query: EventSearchQuery = {}) {
@@ -220,7 +225,13 @@ export async function searchEvents(query: EventSearchQuery = {}) {
     method: 'GET',
   })
 
-  return parseEventsResponse<EventSearchResponse | EventSummary[]>(response)
+  const result = await parseEventsResponse<EventSearchResponse | EventSummary[]>(response)
+
+  if (Array.isArray(result) || Array.isArray(result.events)) {
+    return result
+  }
+
+  throw new ApiError('전시 검색 응답 형식이 올바르지 않습니다.', response.status)
 }
 
 export async function getEventDetail(eventId: string) {

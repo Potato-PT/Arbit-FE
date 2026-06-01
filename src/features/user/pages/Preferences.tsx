@@ -19,8 +19,8 @@ const FILM_HOLE_COUNT = 10
 function Preferences() {
   const navigate = useNavigate()
   const [seedEvents, setSeedEvents] = useState<PreferenceSeedEvent[]>([])
-  const [selectedEventIds, setSelectedEventIds] = useState<number[]>([])
-  const [failedImageIds, setFailedImageIds] = useState<number[]>([])
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([])
+  const [failedImageIds, setFailedImageIds] = useState<string[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoadingCategories, setIsLoadingCategories] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -71,7 +71,7 @@ function Preferences() {
     setCurrentIndex((index) => Math.min(index, maxStartIndex))
   }, [maxStartIndex])
 
-  const toggleSeedEvent = (eventId: number) => {
+  const toggleSeedEvent = (eventId: string) => {
     setSelectedEventIds((currentEventIds) => {
       if (currentEventIds.includes(eventId)) {
         return currentEventIds.filter((selectedEventId) => selectedEventId !== eventId)
@@ -83,7 +83,7 @@ function Preferences() {
     })
   }
 
-  const handleImageError = (eventId: number) => {
+  const handleImageError = (eventId: string) => {
     setFailedImageIds((currentIds) =>
       currentIds.includes(eventId) ? currentIds : [...currentIds, eventId],
     )

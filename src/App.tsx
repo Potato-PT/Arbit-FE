@@ -204,30 +204,48 @@ function App() {
       {currentHeroExhibition && (
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-scene" aria-hidden="true">
-            <div className="window window-left" />
-            <div className="window window-right" />
-            <div className="painting" />
-            <div className="sculptures">
-              <span className="sculpture bronze-one" />
-              <span className="sculpture bronze-two" />
-              <span className="sculpture black-one" />
-            </div>
+            {currentHeroExhibition.posterImageUrl && (
+              <img
+                className="hero-artwork"
+                src={currentHeroExhibition.posterImageUrl}
+                alt=""
+              />
+            )}
           </div>
           <div className="hero-shade" />
           <div className="hero-copy">
+            <p className="hero-eyebrow">
+              <span>Featured exhibition</span>
+              {currentHeroExhibition.category}
+            </p>
             <h1 id="hero-title">
               {currentHeroExhibition.title}
               {currentHeroExhibition.subtitle && <span>: {currentHeroExhibition.subtitle}</span>}
             </h1>
+            {(currentHeroExhibition.period || currentHeroExhibition.venue) && (
+              <p className="hero-meta">
+                {currentHeroExhibition.period}
+                {currentHeroExhibition.period && currentHeroExhibition.venue && <i />}
+                {currentHeroExhibition.venue}
+              </p>
+            )}
             <div className="hero-buttons">
               {currentHeroExhibition.homepageUrl && currentHeroExhibition.homepageUrl !== '#' && (
                 <a href={currentHeroExhibition.homepageUrl} className="primary-link">
                   홈페이지 바로가기
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 17 17 7" />
+                    <path d="M9 7h8v8" />
+                  </svg>
                 </a>
               )}
               {currentHeroExhibition.eventId ? (
                 <Link to={`/exhibitions/${currentHeroExhibition.eventId}`} className="ghost-link">
                   자세히 보기
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h13" />
+                    <path d="m13 7 5 5-5 5" />
+                  </svg>
                 </Link>
               ) : (
                 <span className="ghost-link is-disabled" aria-disabled="true">
@@ -427,9 +445,14 @@ function normalizeHomeData(data: HomeResponse | null) {
   }
 
   const events = data?.events ?? []
-  const hero = data?.heroExhibition ?? data?.hero ?? events[0] ?? null
   const recommendationEvents = data?.recommendedExhibitions ?? data?.recommendations
   const recommendations = recommendationEvents ?? events
+  const hero =
+    getHighestMatchScoreExhibition(recommendationEvents) ??
+    data?.heroExhibition ??
+    data?.hero ??
+    events[0] ??
+    null
 
   return {
     heroExhibition: hero ? normalizeHeroExhibition(hero) : null,
@@ -437,6 +460,16 @@ function normalizeHomeData(data: HomeResponse | null) {
       normalizeRecommendedExhibition(item, index, Boolean(recommendationEvents)),
     ),
   }
+}
+
+function getHighestMatchScoreExhibition(exhibitions?: RecommendedExhibition[]) {
+  return exhibitions?.reduce<RecommendedExhibition | null>((highest, item) => {
+    if (typeof item.matchScore !== 'number' || !Number.isFinite(item.matchScore)) {
+      return highest
+    }
+
+    return !highest || item.matchScore > (highest.matchScore ?? -Infinity) ? item : highest
+  }, null)
 }
 
 function normalizeHeroExhibition(item: RecommendedExhibition): HeroExhibition {

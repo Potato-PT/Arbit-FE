@@ -13,7 +13,7 @@ export interface SearchExhibition {
   category: string
   location: string
   district: string
-  periodStatus: '진행중' | '예정'
+  periodStatus: '진행중' | '예정' | '종료'
   priceType: '무료' | '유료'
   distanceKm: number
   title: string

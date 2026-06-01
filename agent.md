@@ -173,10 +173,9 @@ My Page API response types live in:
 Do not assume a visible control is already backed by behavior.
 
 - Search requests use browser geolocation for distance sorting when permission is
-  available. Search card hearts are display-only, and the search "전시 더보기"
-  button currently has no handler.
-- All-exhibitions "더 보기" paginates the already loaded API result in the
-  browser. It does not request another backend page.
+  available. Search card hearts are display-only.
+- All-exhibitions and search "더 보기" buttons paginate the already loaded API
+  result in the browser in groups of 12. They do not request another backend page.
 - The login "로그인 유지" checkbox and "계정 찾기" button are currently
   presentation-only.
 - My Page bookmark hearts and review share buttons are currently

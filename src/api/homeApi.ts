@@ -87,8 +87,8 @@ export async function getHome() {
   return result
 }
 
-export async function getHomeRecommendations(eventIds: number[]) {
-  const validEventIds = [...new Set(eventIds.filter(Number.isFinite))]
+export async function getHomeRecommendations(eventIds: string[]) {
+  const validEventIds = [...new Set(eventIds.filter((eventId) => eventId.trim()))]
 
   if (validEventIds.length < 4 || validEventIds.length > 5) {
     throw new ApiError('추천 이벤트는 4~5개를 선택해야 합니다.', 400)

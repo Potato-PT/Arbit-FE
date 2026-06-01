@@ -14,6 +14,7 @@ const priceFilters = ['무료', '유료'] as const
 const sortOptions: SortOption[] = ['거리순', '마감 임박순', '예정순']
 const seoulDistricts = ['강남구', '마포구', '종로구', '성동구', '송파구', '용산구']
 const genreFilters = ['사진/영상', '회화', '미디어아트', '체험형']
+const pageSize = 12
 
 function ExhibitionSearch() {
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(['마포구'])
@@ -24,6 +25,7 @@ function ExhibitionSearch() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<SortOption>('거리순')
   const [events, setEvents] = useState<EventSummary[]>([])
+  const [visibleCount, setVisibleCount] = useState(pageSize)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
@@ -32,6 +34,8 @@ function ExhibitionSearch() {
     () => events.map((event, index) => normalizeSearchEvent(event, index)),
     [events],
   )
+  const visibleExhibitions = filteredExhibitions.slice(0, visibleCount)
+  const hasMoreExhibitions = visibleCount < filteredExhibitions.length
 
   useEffect(() => {
     if (sortOption !== '거리순' || userLocation || typeof navigator === 'undefined') {
@@ -75,6 +79,7 @@ function ExhibitionSearch() {
 
         if (!ignore) {
           setEvents(nextEvents)
+          setVisibleCount(pageSize)
         }
       } catch {
         if (!ignore) {
@@ -244,7 +249,7 @@ function ExhibitionSearch() {
 
           {!isLoading && !errorMessage && filteredExhibitions.length > 0 ? (
             <div className="result-grid">
-              {filteredExhibitions.map((item, index) => {
+              {visibleExhibitions.map((item, index) => {
                 const cardContent = (
                   <>
                     <div className={`result-art result-art-${item.artwork}`}>
@@ -295,9 +300,15 @@ function ExhibitionSearch() {
             </div>
           )}
 
-          {!isLoading && !errorMessage && filteredExhibitions.length > 0 && <button className="load-more" type="button">
-            전시 더보기
-          </button>}
+          {!isLoading && !errorMessage && hasMoreExhibitions && (
+            <button
+              className="load-more"
+              type="button"
+              onClick={() => setVisibleCount((current) => current + pageSize)}
+            >
+              전시 더보기
+            </button>
+          )}
         </section>
       </div>
       <AppFooter />
@@ -343,15 +354,16 @@ function normalizeSearchEvent(item: EventSummary, index: number): SearchExhibiti
   const endDate = item.endDate ?? ''
   const district = item.district ?? item.location ?? ''
   const free = Boolean(item.free)
+  const periodStatus = getPeriodStatus(startDate, endDate, item.status)
 
   return {
     id: eventId ?? '',
     eventId,
-    badge: item.status,
+    badge: periodStatus,
     category: item.category ?? '전시',
     location: item.location ?? district,
     district,
-    periodStatus: item.status === '예정' || item.status === 'upcoming' ? '예정' : '진행중',
+    periodStatus,
     priceType: free ? '무료' : '유료',
     distanceKm: item.distanceKm ?? 0,
     title: item.title ?? '제목 없는 전시',
@@ -371,6 +383,46 @@ function formatPeriod(startDate: string, endDate: string) {
 
 function formatDate(value: string) {
   return value.replaceAll('-', '.')
+}
+
+function getPeriodStatus(
+  startDate: string,
+  endDate: string,
+  status: string,
+): SearchExhibition['periodStatus'] {
+  const today = startOfDay(new Date())
+  const start = parseIsoDate(startDate)
+  const end = parseIsoDate(endDate)
+
+  if (end && end < today) {
+    return '종료'
+  }
+
+  if (start && start > today) {
+    return '예정'
+  }
+
+  const normalizedStatus = status.toUpperCase()
+
+  if (normalizedStatus === 'ENDED' || status === '종료') {
+    return '종료'
+  }
+
+  if (normalizedStatus === 'UPCOMING' || status === '예정') {
+    return '예정'
+  }
+
+  return '진행중'
+}
+
+function parseIsoDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+
+  return year && month && day ? new Date(year, month - 1, day) : null
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
 function getFallbackArtwork(index: number): SearchArtwork {

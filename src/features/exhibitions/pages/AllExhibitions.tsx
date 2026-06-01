@@ -35,7 +35,7 @@ const genreFilters = [
   '기타',
 ]
 const districts = ['종로구', '중구', '용산구', '성동구', '마포구', '서초구', '강남구', '강서구', '송파구']
-const initialDisplayCount = 10
+const initialDisplayCount = 12
 const pageSize = 12
 const dayInMs = 24 * 60 * 60 * 1000
 

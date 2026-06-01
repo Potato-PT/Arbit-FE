@@ -79,7 +79,7 @@ export function saveAuthenticatedUsername(username: string) {
   window.localStorage.setItem(AUTHENTICATED_USERNAME_STORAGE_KEY, username)
 }
 
-export function saveRecommendationEventIds(eventIds: number[]) {
+export function saveRecommendationEventIds(eventIds: string[]) {
   if (typeof window === 'undefined') {
     return
   }
@@ -125,11 +125,11 @@ export function isJwtLike(token: string) {
   return segments.length === 3 && segments.every(Boolean)
 }
 
-function isValidEventId(eventId: unknown): eventId is number {
-  return typeof eventId === 'number' && Number.isFinite(eventId)
+function isValidEventId(eventId: unknown): eventId is string {
+  return typeof eventId === 'string' && Boolean(eventId.trim())
 }
 
-function isValidEventIdCount(eventIds: number[]) {
+function isValidEventIdCount(eventIds: string[]) {
   return eventIds.length >= 4 && eventIds.length <= 5
 }
 

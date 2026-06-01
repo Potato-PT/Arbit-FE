@@ -4,7 +4,7 @@ import { createJsonHeaders, getAccessTokenForApi } from '../../../api/headers'
 import { ApiError } from './authApi'
 
 export type PreferenceSeedEvent = {
-  event_id: number
+  event_id: string
   title: string
   genre: string
   posterImage: string
@@ -15,7 +15,7 @@ type PreferencesDataResponse = {
   data: PreferencesResponse
 }
 
-export type SavePreferencesRequest = number[]
+export type SavePreferencesRequest = string[]
 type SavePreferencesApiPayload = {
   success: true
   data: SavePreferencesRequest
@@ -128,8 +128,8 @@ function normalizePreferenceSeedEvents(seedEvents: unknown[]): PreferenceSeedEve
       typeof seedEvent !== 'object' ||
       seedEvent === null ||
       !('event_id' in seedEvent) ||
-      typeof seedEvent.event_id !== 'number' ||
-      !Number.isFinite(seedEvent.event_id)
+      typeof seedEvent.event_id !== 'string' ||
+      !seedEvent.event_id.trim()
     ) {
       return []
     }
@@ -182,6 +182,6 @@ export async function savePreferences(selectedEventIds: SavePreferencesRequest) 
   return result
 }
 
-function isValidEventId(eventId: unknown): eventId is number {
-  return typeof eventId === 'number' && Number.isFinite(eventId)
+function isValidEventId(eventId: unknown): eventId is string {
+  return typeof eventId === 'string' && Boolean(eventId.trim())
 }
