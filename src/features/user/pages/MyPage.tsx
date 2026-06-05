@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import { beginPreferencesOnboarding, clearAuthStorage } from '../../../api/authStorage'
 import {
+  deleteMyReview,
   getMyBookmarks,
   getMyProfile,
   getMyReviews,
@@ -27,7 +28,10 @@ const tabs: { id: MyPageTab; label: string }[] = [
 
 function MyPage() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<MyPageTab>('favorites')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<MyPageTab>(() =>
+    getMyPageTab(searchParams.get('tab')),
+  )
   const [profile, setProfile] = useState<MyProfile | null>(null)
   const [isProfileLoading, setIsProfileLoading] = useState(true)
   const [profileError, setProfileError] = useState('')
@@ -41,6 +45,11 @@ function MyPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const profileImageInputRef = useRef<HTMLInputElement>(null)
   const tasteKeywords = profile?.tasteKeywords ?? []
+
+  useEffect(() => {
+    const nextTab = getMyPageTab(searchParams.get('tab'))
+    setActiveTab(nextTab)
+  }, [searchParams])
 
   useEffect(() => {
     let isMounted = true
@@ -212,6 +221,15 @@ function MyPage() {
     navigate('/user/preferences', { state: { fromSignup: true } })
   }
 
+  const handleTabChange = (tabId: MyPageTab) => {
+    setActiveTab(tabId)
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('tab', tabId)
+      return nextParams
+    })
+  }
+
   return (
     <main className="mypage" aria-label="마이페이지">
       <AppHeader />
@@ -329,7 +347,7 @@ function MyPage() {
               role="tab"
               aria-selected={activeTab === tab.id}
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
             >
               {tab.label}
             </button>
@@ -372,6 +390,10 @@ function formatDisplayDate(dateText?: string) {
   }).format(date)
 }
 
+function getMyPageTab(value: string | null): MyPageTab {
+  return tabs.some((tab) => tab.id === value) ? (value as MyPageTab) : 'favorites'
+}
+
 function PreferenceTags({ tasteKeywords }: { tasteKeywords: string[] }) {
   if (tasteKeywords.length === 0) {
     return <p className="preference-empty">설정된 취향 키워드가 없습니다.</p>
@@ -390,6 +412,7 @@ function ReviewsPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
   const [reviews, setReviews] = useState<ApiMyReview[]>([])
   const [isReviewsLoading, setIsReviewsLoading] = useState(true)
   const [reviewsError, setReviewsError] = useState('')
+  const [pendingDeleteReviewIds, setPendingDeleteReviewIds] = useState<Set<number>>(() => new Set())
 
   useEffect(() => {
     let isMounted = true
@@ -421,6 +444,41 @@ function ReviewsPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
       isMounted = false
     }
   }, [])
+
+  const handleReviewDelete = async (review: ApiMyReview) => {
+    if (!window.confirm('이 리뷰를 삭제하시겠습니까?')) {
+      return
+    }
+
+    setPendingDeleteReviewIds((current) => new Set(current).add(review.reviewId))
+
+    try {
+      await deleteMyReview(review.reviewId)
+      setReviews((currentReviews) =>
+        currentReviews.filter((currentReview) => currentReview.reviewId !== review.reviewId),
+      )
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 404) {
+        window.alert('이미 삭제되었거나 찾을 수 없는 리뷰입니다.')
+        setReviews((currentReviews) =>
+          currentReviews.filter((currentReview) => currentReview.reviewId !== review.reviewId),
+        )
+        return
+      }
+
+      window.alert('리뷰를 삭제하지 못했습니다.')
+    } finally {
+      setPendingDeleteReviewIds((current) => {
+        const next = new Set(current)
+        next.delete(review.reviewId)
+        return next
+      })
+    }
+  }
 
   return (
     <div className="reviews-panel" role="tabpanel" aria-label="나의 후기">
@@ -469,12 +527,17 @@ function ReviewsPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
               <div className="review-card-foot">
                 <span>{formatDisplayDate(review.createdAt)}</span>
                 <div className="review-actions">
-                  <span>
-                    <ThumbIcon />
-                    {review.likes}
-                  </span>
                   <button type="button" aria-label={`${review.title} 후기 공유`}>
                     <ShareIcon />
+                  </button>
+                  <button
+                    className="review-delete"
+                    type="button"
+                    aria-label={`${review.title} 후기 삭제`}
+                    disabled={pendingDeleteReviewIds.has(review.reviewId)}
+                    onClick={() => void handleReviewDelete(review)}
+                  >
+                    <TrashIcon />
                   </button>
                 </div>
               </div>
@@ -554,7 +617,7 @@ function FavoritesPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
 
       <div className="favorite-grid">
         {bookmarks.map((item, index) => (
-          <FavoriteCard item={item} key={item.eventId ?? `${item.title}-${index}`} />
+          <FavoriteCard item={item} key={getBookmarkEventId(item) ?? `${item.title}-${index}`} />
         ))}
       </div>
 
@@ -569,6 +632,7 @@ function FavoritesPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
 }
 
 function FavoriteCard({ item }: { item: MyBookmark }) {
+  const eventId = getBookmarkEventId(item)
   const cardContent = (
     <>
       <div className="favorite-poster">
@@ -595,8 +659,8 @@ function FavoriteCard({ item }: { item: MyBookmark }) {
 
   return (
     <article className="favorite-card">
-      {item.eventId ? (
-        <Link className="favorite-card-link" to={`/exhibitions/${item.eventId}`}>
+      {eventId ? (
+        <Link className="favorite-card-link" to={`/exhibitions/${eventId}`}>
           {cardContent}
         </Link>
       ) : (
@@ -615,6 +679,12 @@ function FavoriteCard({ item }: { item: MyBookmark }) {
       </button>
     </article>
   )
+}
+
+function getBookmarkEventId(item: MyBookmark) {
+  const eventId = item.eventId ?? item.event_id
+
+  return eventId ? String(eventId) : undefined
 }
 
 function formatDateRange(startDate: string, endDate: string) {
@@ -658,15 +728,6 @@ function PinIcon() {
   )
 }
 
-function ThumbIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M7.8 20H5a1.5 1.5 0 0 1-1.5-1.5v-6A1.5 1.5 0 0 1 5 11h2.8" />
-      <path d="M7.8 11 11 4.7c.35-.7 1.2-1 1.9-.65.52.25.85.78.82 1.36L13.5 10h5.2a1.8 1.8 0 0 1 1.76 2.16l-1.02 5A3.5 3.5 0 0 1 16 20H7.8V11Z" />
-    </svg>
-  )
-}
-
 function ShareIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -675,6 +736,18 @@ function ShareIcon() {
       <circle cx="18" cy="19" r="2.4" />
       <path d="m8.2 10.9 7.6-4.8" />
       <path d="m8.2 13.1 7.6 4.8" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
     </svg>
   )
 }

@@ -4,10 +4,14 @@ import { createAuthorizationHeaders } from '../../../api/headers'
 import { ApiError } from '../../user/api/authApi'
 
 export type EventsSort = 'match' | 'deadline' | 'latest' | 'rating'
+export type EventSearchSort = 'deadline' | 'latest' | 'rating' | 'distance'
 export type EventStatus = 'ongoing' | 'upcoming' | 'ended' | '진행중' | '예정' | '종료'
+export type EventSearchStatus = 'ONGOING' | 'UPCOMING' | 'CLOSED'
+export type EventSearchTarget = 'ALL' | 'TITLE' | 'CATEGORY' | 'VENUE' | 'DISTRICT' | 'KEYWORD'
 
 export type EventSummary = {
   eventId?: string
+  event_id?: string
   id?: string | number
   title: string
   category: string
@@ -18,10 +22,12 @@ export type EventSummary = {
   endDate: string
   free: boolean
   status: string
+  url?: string
   matchScore?: number
   bookmarked?: boolean
   rating?: number
   distanceKm?: number
+  distance?: number
   location?: string
 }
 
@@ -76,9 +82,33 @@ export type EventsQuery = {
   sort?: EventsSort
 }
 
+export type EventSearchQuery = {
+  keyword?: string
+  target?: EventSearchTarget
+  category?: string
+  district?: string[]
+  status?: EventSearchStatus[]
+  free?: boolean
+  sort?: EventSearchSort
+  lat?: number
+  lng?: number
+  page?: number
+  size?: number
+}
+
 export type EventsResponse = {
   events: EventSummary[]
   totalCount?: number
+}
+
+export type EventSearchResponse = {
+  keyword?: string
+  target?: EventSearchTarget
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  items: EventSummary[]
 }
 
 type ApiSuccessResponse<T> = {
@@ -203,6 +233,23 @@ export async function getEvents(query: EventsQuery = {}) {
   throw new ApiError('전시 목록 응답 형식이 올바르지 않습니다.', response.status)
 }
 
+export async function searchEvents(query: EventSearchQuery = {}) {
+  const response = await fetch(
+    `${API_BASE_URL}${EVENTS_API_PATH}/search${createQueryString(query)}`,
+    {
+      method: 'GET',
+    },
+  )
+
+  const result = await parseEventsResponse<EventSearchResponse>(response)
+
+  if (Array.isArray(result.items)) {
+    return result.items
+  }
+
+  throw new ApiError('검색 결과 응답 형식이 올바르지 않습니다.', response.status)
+}
+
 export async function getEventDetail(eventId: string) {
   const response = await fetch(`${API_BASE_URL}${EVENTS_API_PATH}/${encodeURIComponent(eventId)}`, {
     method: 'GET',
@@ -233,6 +280,36 @@ export async function createEventReview(eventId: string, request: CreateReviewRe
   }
 
   return parseEventsResponse<CreateReviewResponse>(response, { redirectOnUnauthorized: true })
+}
+
+export async function deleteEventReview(eventId: string, reviewId: string | number) {
+  const response = await fetch(
+    `${API_BASE_URL}${EVENTS_API_PATH}/${encodeURIComponent(eventId)}/reviews/${encodeURIComponent(String(reviewId))}`,
+    {
+      method: 'DELETE',
+      headers: createAuthorizationHeaders(),
+    },
+  )
+
+  if (response.status === 401) {
+    handleUnauthorized()
+    throw new ApiError('로그인이 필요합니다.', response.status)
+  }
+
+  if (response.status === 403) {
+    throw new ApiError('삭제 권한이 없습니다.', response.status)
+  }
+
+  if (response.status === 404) {
+    throw new ApiError('리뷰를 찾을 수 없습니다.', response.status)
+  }
+
+  if (!response.ok) {
+    const result = (await response.json().catch(() => null)) as ApiFailureResponse | null
+    const message = isApiResponse(result) ? getApiErrorMessage(result.error) : '리뷰를 삭제하지 못했습니다.'
+
+    throw new ApiError(message, response.status)
+  }
 }
 
 export async function getEventReviews(eventId: string) {

@@ -83,6 +83,38 @@ export function getMyReviews() {
   })
 }
 
+export async function deleteMyReview(reviewId: string | number) {
+  const response = await fetch(
+    `${API_BASE_URL}${MY_PAGE_API_PATH}/reviews/${encodeURIComponent(String(reviewId))}`,
+    {
+      method: 'DELETE',
+      headers: createJsonHeaders(),
+    },
+  )
+
+  if (response.status === 401) {
+    handleUnauthorized()
+    throw new ApiError('로그인이 필요합니다.', response.status)
+  }
+
+  if (response.status === 404) {
+    throw new ApiError('리뷰를 찾을 수 없습니다.', response.status)
+  }
+
+  if (response.status === 204) {
+    return
+  }
+
+  if (!response.ok) {
+    const result = (await response.json().catch(() => null)) as ApiResponse<unknown> | null
+
+    throw new ApiError(
+      result?.error?.message ?? '리뷰를 삭제하지 못했습니다.',
+      response.status,
+    )
+  }
+}
+
 export function getMyBookmarks() {
   return requestMyPage<MyBookmark[]>(`${MY_PAGE_API_PATH}/bookmarks`, {
     method: 'GET',

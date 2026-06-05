@@ -3,6 +3,7 @@ export type ExhibitionArtwork = 'hero' | 'portal' | 'tree' | 'glass' | 'media'
 export interface Exhibition {
   id: string
   eventId?: string
+  event_id?: string
   dday: string
   category: string
   title: string
@@ -32,6 +33,9 @@ export interface HeroExhibition extends Exhibition {
 export type RecommendedExhibition = Exhibition
 
 export type RecommendationApiItem = {
+  eventId?: string
+  event_id?: string
+  id?: string
   title: string
   category: string
   posterImageUrl: string | null

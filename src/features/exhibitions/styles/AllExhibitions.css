@@ -264,15 +264,22 @@
 }
 
 .all-state {
-  min-height: 320px;
-  display: flex;
+  min-height: 300px;
+  display: grid;
   align-items: center;
   justify-content: center;
-  border: 1px solid #eee8df;
-  border-radius: 14px;
-  background: #fbfaf7;
-  color: #8d867d;
+  padding: 48px 24px;
+  border: 1px solid rgba(224, 213, 200, 0.55);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(217, 194, 167, 0.16), transparent 34%),
+    linear-gradient(180deg, #fffefd 0%, #fbf8f3 100%);
+  color: #7f776f;
+  font-family: "Pretendard Variable", Pretendard, var(--font-sans);
   font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-align: center;
 }
 
 .all-state.is-error {
@@ -302,13 +309,26 @@
 }
 
 .all-card-link {
+  position: relative;
   display: block;
   color: inherit;
+  cursor: pointer;
   text-decoration: none;
+}
+
+.all-card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
 }
 
 .all-card-link[aria-disabled="true"] {
   cursor: default;
+}
+
+.all-card-link[aria-disabled="true"]::after {
+  content: none;
 }
 
 .all-poster {

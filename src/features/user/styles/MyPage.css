@@ -758,7 +758,6 @@
   color: #8e8984;
 }
 
-.review-actions span,
 .review-actions button {
   display: inline-flex;
   align-items: center;
@@ -773,6 +772,19 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+}
+
+.review-actions button:hover {
+  color: #5f5954;
+}
+
+.review-actions button:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.review-actions .review-delete:hover {
+  color: #b3483b;
 }
 
 .review-actions svg {

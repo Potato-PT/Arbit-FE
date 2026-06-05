@@ -5,13 +5,12 @@ import artGallery from '../../../assets/artgallery.png'
 import AppFooter from '../../../components/AppFooter'
 import AppHeader from '../../../components/AppHeader'
 import {
-  clearAuthStorage,
   readRecommendationEventIds,
   saveAuthenticatedUsername,
 } from '../../../api/authStorage'
 import { getHomeRecommendations } from '../../../api/homeApi'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
-import { ApiError, login as loginUser } from '../api/authApi'
+import { ApiError, guestLogin, login as loginUser } from '../api/authApi'
 
 type FormSubmitHandler = NonNullable<ComponentProps<'form'>['onSubmit']>
 
@@ -68,9 +67,19 @@ function Login() {
     }
   }
 
-  const handleGuestLogin = () => {
-    clearAuthStorage()
-    navigate('/', { replace: true })
+  const handleGuestLogin = async () => {
+    setErrorMessage('')
+    setIsSubmitting(true)
+
+    try {
+      const tokens = await guestLogin()
+      setAuthTokens(tokens)
+      navigate('/', { replace: true })
+    } catch {
+      setErrorMessage('게스트 로그인 중 오류가 발생했습니다.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

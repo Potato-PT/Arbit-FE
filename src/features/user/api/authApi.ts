@@ -78,12 +78,39 @@ async function postAuth<TRequest extends object, TResponse>(
   return result.data
 }
 
+async function postAuthWithoutBody<TResponse>(path: string): Promise<TResponse> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+  })
+
+  const result = (await response.json().catch(() => null)) as ApiResponse<TResponse> | null
+
+  if (!result) {
+    throw new ApiError('요청 처리 중 오류가 발생했습니다.', response.status)
+  }
+
+  if (!response.ok || !result.success) {
+    const message =
+      typeof result?.error === 'string'
+        ? result.error
+        : result.error?.message ?? '요청 처리 중 오류가 발생했습니다.'
+
+    throw new ApiError(message, response.status)
+  }
+
+  return result.data
+}
+
 export function signup(request: SignupRequest) {
   return postAuth<SignupRequest, AuthTokenResponse>(`${AUTH_API_PATH}/signup`, request)
 }
 
 export function login(request: LoginRequest) {
   return postAuth<LoginRequest, AuthTokenResponse>(`${AUTH_API_PATH}/login`, request)
+}
+
+export function guestLogin() {
+  return postAuthWithoutBody<AuthTokenResponse>(`${AUTH_API_PATH}/guest-login`)
 }
 
 export async function logout() {

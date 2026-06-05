@@ -22,12 +22,12 @@ export type MyReview = {
   posterImageUrl: string
   starScore: number
   content: string
-  likes: number
   createdAt: string
 }
 
 export type MyBookmark = {
   eventId?: string
+  event_id?: string
   title: string
   posterImageUrl: string
   category: string

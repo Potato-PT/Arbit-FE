@@ -4,6 +4,7 @@ import '../../../styles/Home.css'
 import { getHome } from '../../../api/homeApi'
 import AppFooter from '../../../components/AppFooter'
 import AppHeader from '../../../components/AppHeader'
+import StatusMessage from '../../../components/StatusMessage'
 import type { ExhibitionArtwork, HomeResponse, RecommendedExhibition } from '../../../types/home'
 import HomeEventSection from '../components/HomeEventSection'
 import { getDateTimestamp, getDaysUntilEnd } from '../utils/homeDateUtils'
@@ -105,10 +106,16 @@ function GuestHome() {
       </section>
 
       <div className="home-content">
-        {isLoading && <div className="home-state" role="status">홈 이벤트를 불러오는 중입니다.</div>}
+        {isLoading && (
+          <StatusMessage className="home-state">
+            홈 이벤트를 불러오는 중입니다.
+          </StatusMessage>
+        )}
 
         {!isLoading && errorMessage && (
-          <div className="home-state is-error" role="alert">{errorMessage}</div>
+          <StatusMessage className="home-state" role="alert" tone="error">
+            {errorMessage}
+          </StatusMessage>
         )}
 
         {!isLoading && !errorMessage && closingSoonExhibitions.length > 0 && (
@@ -149,7 +156,7 @@ function normalizePublicExhibition(item: RecommendedExhibition, index: number): 
   return {
     ...item,
     id: item.id === undefined || item.id === null ? '' : String(item.id),
-    eventId: item.eventId ? String(item.eventId) : undefined,
+    eventId: getHomeEventId(item),
     dday: item.dday ?? item.status ?? '',
     category: item.category ?? '전시',
     title: item.title ?? '제목 없는 이벤트',
@@ -158,6 +165,12 @@ function normalizePublicExhibition(item: RecommendedExhibition, index: number): 
     artwork: item.artwork ?? getFallbackArtwork(index),
     liked: false,
   }
+}
+
+function getHomeEventId(item: RecommendedExhibition) {
+  const eventId = item.eventId ?? item.event_id ?? item.id
+
+  return eventId ? String(eventId) : undefined
 }
 
 function formatPeriod(startDate?: string, endDate?: string) {

@@ -414,28 +414,14 @@
   font-weight: 400;
 }
 
-.home-state,
 .home-notice {
   margin-top: 28px;
   margin-bottom: 28px;
 }
 
 .home-state {
-  min-height: 180px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #ece6df;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #6f6760;
-  font-size: 15px;
-}
-
-.home-state.is-error {
-  border-color: #f3d2ce;
-  background: #fff8f7;
-  color: #c1463d;
+  margin-top: 28px;
+  margin-bottom: 28px;
 }
 
 .home-notice {

@@ -1,0 +1,17 @@
+.status-message {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ece6df;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #6f6760;
+  font-size: 15px;
+}
+
+.status-message.is-error {
+  border-color: #f3d2ce;
+  background: #fff8f7;
+  color: #c1463d;
+}

@@ -2,13 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
+import StatusMessage from '../../../components/StatusMessage'
+import { readAccessToken } from '../../../api/authStorage'
 import { ApiError } from '../../user/api/authApi'
 import {
+  deleteEventReview,
   getEventDetail,
   getEventReviews,
   type EventDetail,
   type EventReviewListItem,
 } from '../api/eventsApi'
+import { addBookmark, removeBookmark } from '../api/bookmarksApi'
 import '../styles/ExhibitionDetail.css'
 
 function ExhibitionDetail() {
@@ -20,6 +24,8 @@ function ExhibitionDetail() {
   const [errorMessage, setErrorMessage] = useState('')
   const [reviewsErrorMessage, setReviewsErrorMessage] = useState('')
   const [isNotFound, setIsNotFound] = useState(false)
+  const [isBookmarkPending, setIsBookmarkPending] = useState(false)
+  const [pendingDeleteReviewIds, setPendingDeleteReviewIds] = useState<Set<string>>(() => new Set())
   const exhibition = useMemo(
     () => (eventDetail ? normalizeEventDetail(eventDetail) : null),
     [eventDetail],
@@ -95,12 +101,106 @@ function ExhibitionDetail() {
     }
   }, [eventId])
 
+  const handleBookmarkToggle = async (isBookmarked: boolean) => {
+    if (!eventId) {
+      window.alert('이벤트 정보를 찾을 수 없습니다.')
+      return
+    }
+
+    if (!readAccessToken()) {
+      window.alert('로그인이 필요합니다.')
+      return
+    }
+
+    setIsBookmarkPending(true)
+
+    try {
+      if (isBookmarked) {
+        await removeBookmark(eventId)
+      } else {
+        await addBookmark(eventId)
+      }
+
+      setEventDetail((current) => (current ? { ...current, bookmarked: !isBookmarked } : current))
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setEventDetail((current) => (current ? { ...current, bookmarked: true } : current))
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 404) {
+        window.alert('이벤트 정보를 찾을 수 없습니다.')
+        return
+      }
+
+      if (error instanceof ApiError && error.status === 401) {
+        window.alert('로그인이 필요합니다.')
+        return
+      }
+
+      window.alert('북마크 처리 중 오류가 발생했습니다.')
+    } finally {
+      setIsBookmarkPending(false)
+    }
+  }
+
+  const handleReviewDelete = async (reviewId: string) => {
+    if (!eventId) {
+      window.alert('이벤트 정보를 찾을 수 없습니다.')
+      return
+    }
+
+    if (!readAccessToken()) {
+      window.alert('로그인이 필요합니다.')
+      return
+    }
+
+    if (!window.confirm('이 리뷰를 삭제하시겠습니까?')) {
+      return
+    }
+
+    setPendingDeleteReviewIds((current) => new Set(current).add(reviewId))
+
+    try {
+      await deleteEventReview(eventId, reviewId)
+      setEventReviews((current) => current.filter((review) => String(review.id) !== reviewId))
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 401) {
+          window.alert('로그인이 필요합니다.')
+          return
+        }
+
+        if (error.status === 403) {
+          window.alert('본인이 작성한 리뷰만 삭제할 수 있습니다.')
+          return
+        }
+
+        if (error.status === 404) {
+          window.alert('이미 삭제되었거나 찾을 수 없는 리뷰입니다.')
+          setEventReviews((current) => current.filter((review) => String(review.id) !== reviewId))
+          return
+        }
+      }
+
+      window.alert('리뷰를 삭제하지 못했습니다.')
+    } finally {
+      setPendingDeleteReviewIds((current) => {
+        const next = new Set(current)
+        next.delete(reviewId)
+        return next
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="detail-page">
         <AppHeader />
-        <section className="detail-not-found" role="status">
-          <h1>이벤트를 불러오는 중입니다.</h1>
+        <section className="detail-loading">
+          <StatusMessage>
+            전시 정보를 불러오는 중입니다.
+          </StatusMessage>
         </section>
       </main>
     )
@@ -110,10 +210,7 @@ function ExhibitionDetail() {
     return (
       <main className="detail-page">
         <AppHeader />
-        <section className="detail-not-found">
-          <h1>이벤트를 찾을 수 없습니다.</h1>
-          <Link to="/exhibitions/all">행사 목록으로 돌아가기</Link>
-        </section>
+        <DetailState title="전시를 찾을 수 없습니다." eyebrow="Not Found" />
       </main>
     )
   }
@@ -122,10 +219,11 @@ function ExhibitionDetail() {
     return (
       <main className="detail-page">
         <AppHeader />
-        <section className="detail-not-found" role="alert">
-          <h1>{errorMessage || '이벤트 상세 정보를 불러오지 못했습니다.'}</h1>
-          <Link to="/exhibitions/all">행사 목록으로 돌아가기</Link>
-        </section>
+        <DetailState
+          title={errorMessage || '전시 상세 정보를 불러오지 못했습니다.'}
+          eyebrow="Unavailable"
+          role="alert"
+        />
       </main>
     )
   }
@@ -135,6 +233,23 @@ function ExhibitionDetail() {
       <AppHeader />
 
       <section className="detail-hero" aria-labelledby="detail-title">
+        {exhibition.posterImageUrl && (
+          <div
+            className="detail-hero-bg"
+            style={{ backgroundImage: `url(${exhibition.posterImageUrl})` }}
+            aria-hidden="true"
+          />
+        )}
+        <div className="detail-hero-overlay" aria-hidden="true" />
+
+        <nav className="detail-breadcrumb" aria-label="탐색 경로">
+          <Link to="/">홈</Link>
+          <span>/</span>
+          <Link to="/exhibitions/all">둘러보기</Link>
+          <span>/</span>
+          <strong>전시 상세</strong>
+        </nav>
+
         <div className="detail-art" aria-hidden="true">
           {exhibition.posterImageUrl ? (
             <img src={exhibition.posterImageUrl} alt="" />
@@ -152,8 +267,9 @@ function ExhibitionDetail() {
         <div className="detail-summary">
           <div className="detail-kicker">
             <span>{exhibition.status}</span>
-            <span className="detail-stars" aria-label={`평점 ${exhibition.rating}`}>
-              ★★★★★
+            <span className="detail-stars" aria-label={`평점 ${exhibition.rating.toFixed(1)}`}>
+              <span>{'★'.repeat(getRoundedRating(exhibition.rating))}</span>
+              <i>{'★'.repeat(5 - getRoundedRating(exhibition.rating))}</i>
             </span>
             <strong>({exhibition.rating.toFixed(1)})</strong>
           </div>
@@ -174,7 +290,8 @@ function ExhibitionDetail() {
             <div>
               <dt>입장료</dt>
               <dd className="detail-price">
-                {exhibition.fee} <span>{exhibition.free ? '/ 무료' : '/ 1인'}</span>
+                {exhibition.fee}
+                {exhibition.priceUnit && <span>{exhibition.priceUnit}</span>}
               </dd>
             </div>
             <div>
@@ -184,22 +301,44 @@ function ExhibitionDetail() {
             <div>
               <dt>태그</dt>
               <dd className="detail-tags">
-                {exhibition.tags.map((tag) => (
-                  <span key={tag}>{tag}</span>
-                ))}
+                {exhibition.tags.length > 0 ? (
+                  exhibition.tags.map((tag, index) => (
+                    <span className={index > 1 ? 'is-outline' : undefined} key={tag}>
+                      {tag}
+                    </span>
+                  ))
+                ) : (
+                  <span>전시</span>
+                )}
               </dd>
             </div>
           </dl>
 
-          <a className="homepage-button" href={exhibition.url}>
-            홈페이지 바로가기
-          </a>
+          <div className="detail-actions">
+            <a className="homepage-button" href={exhibition.url} target="_blank" rel="noreferrer">
+              홈페이지 바로가기
+              <ExternalLinkIcon />
+            </a>
+            <button
+              className="bookmark-button"
+              type="button"
+              aria-pressed={exhibition.bookmarked}
+              disabled={isBookmarkPending}
+              onClick={() => void handleBookmarkToggle(exhibition.bookmarked)}
+            >
+              <BookmarkIcon />
+              북마크
+            </button>
+          </div>
         </div>
       </section>
 
       <section className="review-section" aria-labelledby="review-title">
         <div className="review-heading">
-          <h2 id="review-title">관람객 경험</h2>
+          <div className="review-title-group">
+            <span aria-hidden="true">Reviews</span>
+            <h2 id="review-title">관람객 경험</h2>
+          </div>
           {eventId ? (
             <Link to={`/exhibitions/${eventId}/review`} className="review-write-link">
               후기 작성
@@ -227,9 +366,20 @@ function ExhibitionDetail() {
           <div className="review-grid">
             {reviews.map((review) => (
               <article className="review-card" key={review.id}>
-                <div className="review-rating" aria-label={`별점 ${review.rating}`}>
-                  {'★'.repeat(review.rating)}
-                  {'☆'.repeat(5 - review.rating)}
+                <div className="review-card-top">
+                  <div className="review-rating" aria-label={`별점 ${review.rating}`}>
+                    <span>{'★'.repeat(review.rating)}</span>
+                    <i>{'★'.repeat(5 - review.rating)}</i>
+                  </div>
+                  <button
+                    className="review-delete-button"
+                    type="button"
+                    disabled={pendingDeleteReviewIds.has(review.id)}
+                    onClick={() => void handleReviewDelete(review.id)}
+                  >
+                    <TrashIcon />
+                    삭제
+                  </button>
                 </div>
                 {review.verificationImageUrl && (
                   <img className="review-image" src={review.verificationImageUrl} alt="" />
@@ -249,6 +399,22 @@ function ExhibitionDetail() {
       </section>
 
       <AppFooter />
+
+      <div className="sticky-detail-actions">
+        <a className="homepage-button" href={exhibition.url} target="_blank" rel="noreferrer">
+          홈페이지
+          <ExternalLinkIcon />
+        </a>
+        <button
+          className="bookmark-button"
+          type="button"
+          aria-pressed={exhibition.bookmarked}
+          disabled={isBookmarkPending}
+          onClick={() => void handleBookmarkToggle(exhibition.bookmarked)}
+        >
+          <BookmarkIcon />
+        </button>
+      </div>
     </main>
   )
 }
@@ -259,7 +425,10 @@ function normalizeEventDetail(item: EventDetail) {
   const endDate = item.endDate ?? ''
   const tags = item.keyword ?? []
   const rating = item.rating ?? 0
-  const fee = item.price ?? (item.free ? '무료' : '유료')
+  const rawFee = item.price?.trim()
+  const free = Boolean(item.free) || rawFee === '무료'
+  const fee = rawFee || (free ? '무료' : '유료')
+  const priceUnit = free ? '' : '/ 1인'
 
   return {
     id,
@@ -273,8 +442,9 @@ function normalizeEventDetail(item: EventDetail) {
     startDate,
     endDate,
     fee,
+    priceUnit,
     time: item.time ?? item.eventTime ?? '',
-    free: Boolean(item.free),
+    free,
     tags,
     status: item.status ?? '',
     rating,
@@ -293,6 +463,10 @@ function normalizeReview(review: EventReviewListItem, index: number) {
     createdAt: formatReviewDate(review.createdAt),
     tone: (['warm', 'soft', 'blush'] as const)[index % 3],
   }
+}
+
+function getRoundedRating(rating: number) {
+  return Math.max(0, Math.min(5, Math.round(rating)))
 }
 
 function formatPeriod(startDate: string, endDate: string) {
@@ -338,6 +512,54 @@ function PencilIcon() {
       <path d="m4 20 4.7-1 10-10a2.2 2.2 0 0 0-3.1-3.1l-10 10L4 20Z" />
       <path d="m13.8 7.7 2.5 2.5" />
     </svg>
+  )
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M15 3h6v6" />
+      <path d="M10 14 21 3" />
+      <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+    </svg>
+  )
+}
+
+function BookmarkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19 21 12 17 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  )
+}
+
+function DetailState({
+  title,
+  eyebrow,
+  role,
+}: {
+  title: string
+  eyebrow: string
+  role?: 'status' | 'alert'
+}) {
+  return (
+    <section className="detail-state" role={role}>
+      <span>{eyebrow}</span>
+      <h1>{title}</h1>
+      {role !== 'status' && <Link to="/exhibitions/all">전시 목록으로 돌아가기</Link>}
+    </section>
   )
 }
 

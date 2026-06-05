@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import '../../../styles/Home.css'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
+import StatusMessage from '../../../components/StatusMessage'
 import { getHome, getHomeRecommendations } from '../../../api/homeApi'
 import { readAccessToken, readRecommendationEventIds } from '../../../api/authStorage'
 import { hasValidAccessTokenForApi } from '../../../api/headers'
@@ -279,19 +280,21 @@ function LoggedInHome() {
         )}
 
         {isLoading && (
-          <div className="home-state" role="status">
+          <StatusMessage className="home-state">
             홈 이벤트를 불러오는 중입니다.
-          </div>
+          </StatusMessage>
         )}
 
         {!isLoading && errorMessage && (
-          <div className="home-state is-error" role="alert">
+          <StatusMessage className="home-state" role="alert" tone="error">
             {errorMessage}
-          </div>
+          </StatusMessage>
         )}
 
         {!isLoading && !errorMessage && currentRecommendedExhibitions.length === 0 && (
-          <div className="home-state">표시할 추천 이벤트가 없습니다.</div>
+          <StatusMessage className="home-state">
+            표시할 추천 이벤트가 없습니다.
+          </StatusMessage>
         )}
 
         {!isLoading && !errorMessage && currentRecommendedExhibitions.length > 0 && (
@@ -398,6 +401,7 @@ function toRecommendedExhibition(item: RecommendationApiItem): RecommendedExhibi
   return {
     ...item,
     id: '',
+    eventId: getHomeEventId(item),
     dday: item.status,
     period: formatPeriod(item.startDate, item.endDate),
     venue: item.venue ?? undefined,
@@ -412,7 +416,7 @@ function updateRecommendedBookmark<T extends RecommendedExhibition>(
   eventId: string,
   bookmarked: boolean,
 ): T {
-  return item.eventId === eventId ? { ...item, bookmarked, liked: bookmarked } : item
+  return getHomeEventId(item) === eventId ? { ...item, bookmarked, liked: bookmarked } : item
 }
 
 function normalizeHomeData(data: HomeResponse | null) {
@@ -498,7 +502,7 @@ function normalizeRecommendedExhibition(
   return {
     ...item,
     id: item.id === undefined || item.id === null ? '' : String(item.id),
-    eventId: item.eventId ? String(item.eventId) : undefined,
+    eventId: getHomeEventId(item),
     dday: item.dday ?? item.status ?? '',
     category: item.category ?? '전시',
     title: item.title ?? '제목 없는 이벤트',
@@ -508,6 +512,12 @@ function normalizeRecommendedExhibition(
     liked: item.bookmarked ?? item.liked ?? false,
     matchScore,
   }
+}
+
+function getHomeEventId(item: RecommendedExhibition | RecommendationApiItem) {
+  const eventId = item.eventId ?? item.event_id ?? item.id
+
+  return eventId ? String(eventId) : undefined
 }
 
 function formatPeriod(startDate?: string, endDate?: string) {
