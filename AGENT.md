@@ -49,6 +49,7 @@ Legacy `/exhibitions/search` and `/exhibition/all` redirect to `/exhibitions/all
 - `src/api/authStorage.ts`: tokens, auth flags, onboarding markers, optional recommendation ID cache
 - `src/api/headers.ts`: API header helpers
 - `src/api/homeApi.ts`: home and home recommendation API helpers
+- `src/features/home/utils/homeHeroUtils.ts`: home hero event selection helper
 - `src/features/exhibitions/api/eventsApi.ts`: event list, match list, search, detail, reviews, homepage click API helpers
 - `src/features/exhibitions/api/bookmarksApi.ts`: bookmark mutations
 - `src/features/user/api/authApi.ts`: signup, login, guest login, logout

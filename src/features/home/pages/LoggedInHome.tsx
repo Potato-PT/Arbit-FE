@@ -11,6 +11,7 @@ import { ApiError } from '../../user/api/authApi'
 import { addBookmark, removeBookmark } from '../../exhibitions/api/bookmarksApi'
 import HomeEventSection from '../components/HomeEventSection'
 import { getDateTimestamp, getDaysUntilEnd } from '../utils/homeDateUtils'
+import { getHomeHeroLabel, selectHomeHeroEvent } from '../utils/homeHeroUtils'
 import type {
   ExhibitionArtwork,
   HeroExhibition,
@@ -29,7 +30,6 @@ function LoggedInHome() {
   const [recommendationMessage, setRecommendationMessage] = useState('')
   const [pendingBookmarkIds, setPendingBookmarkIds] = useState<Set<string>>(() => new Set())
   const normalizedHome = useMemo(() => normalizeHomeData(homeData), [homeData])
-  const currentHeroExhibition = normalizedHome.heroExhibition
   const currentRecommendedExhibitions = normalizedHome.recommendedExhibitions
   const closingSoonExhibitions = useMemo(
     () =>
@@ -50,6 +50,23 @@ function LoggedInHome() {
         .slice(0, 10),
     [normalizedHome.baseExhibitions],
   )
+  const currentHero = useMemo(
+    () =>
+      selectHomeHeroEvent({
+        recommendations: currentRecommendedExhibitions,
+        closingSoon: closingSoonExhibitions,
+        latest: newExhibitions,
+        fallback: normalizedHome.baseExhibitions,
+      }),
+    [
+      closingSoonExhibitions,
+      currentRecommendedExhibitions,
+      newExhibitions,
+      normalizedHome.baseExhibitions,
+    ],
+  )
+  const currentHeroExhibition = currentHero ? normalizeHeroExhibition(currentHero.event) : null
+  const currentHeroLabel = currentHero ? getHomeHeroLabel(currentHero.source) : ''
 
   useEffect(() => {
     let ignore = false
@@ -212,6 +229,11 @@ function LoggedInHome() {
           <div className="hero-shade" />
           <div className="hero-copy">
             <div className="hero-badges">
+              {currentHeroLabel && (
+                <span className={currentHero?.source === 'recommendation' ? 'hero-badge is-match' : 'hero-badge'}>
+                  {currentHeroLabel}
+                </span>
+              )}
               {currentHeroExhibition.matchRate > 0 && (
                 <span className="hero-badge is-match">{currentHeroExhibition.matchRate}% 일치</span>
               )}
@@ -412,28 +434,18 @@ function updateRecommendedBookmark<T extends RecommendedExhibition>(
 function normalizeHomeData(data: HomeResponse | null) {
   if (Array.isArray(data)) {
     return {
-      heroExhibition: null,
       baseExhibitions: data.map((item, index) =>
         normalizeRecommendedExhibition(item, index),
       ),
-      recommendedExhibitions: data.map((item, index) =>
-        normalizeRecommendedExhibition(item, index),
-      ),
+      recommendedExhibitions: [],
     }
   }
 
   const events = data?.events ?? []
   const recommendationEvents = data?.recommendedExhibitions ?? data?.recommendations
-  const recommendations = recommendationEvents ?? events
-  const hero =
-    getHighestMatchScoreExhibition(recommendationEvents) ??
-    data?.heroExhibition ??
-    data?.hero ??
-    events[0] ??
-    null
+  const recommendations = recommendationEvents ?? []
 
   return {
-    heroExhibition: hero ? normalizeHeroExhibition(hero) : null,
     baseExhibitions: events.map((item, index) =>
       normalizeRecommendedExhibition(item, index),
     ),
@@ -441,16 +453,6 @@ function normalizeHomeData(data: HomeResponse | null) {
       normalizeRecommendedExhibition(item, index, Boolean(recommendationEvents)),
     ),
   }
-}
-
-function getHighestMatchScoreExhibition(exhibitions?: RecommendedExhibition[]) {
-  return exhibitions?.reduce<RecommendedExhibition | null>((highest, item) => {
-    if (typeof item.matchScore !== 'number' || !Number.isFinite(item.matchScore)) {
-      return highest
-    }
-
-    return !highest || item.matchScore > (highest.matchScore ?? -Infinity) ? item : highest
-  }, null)
 }
 
 function getHeroTitleClassName(title: string) {

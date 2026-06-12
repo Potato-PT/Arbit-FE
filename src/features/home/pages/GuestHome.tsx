@@ -8,6 +8,7 @@ import StatusMessage from '../../../components/StatusMessage'
 import type { ExhibitionArtwork, HomeResponse, RecommendedExhibition } from '../../../types/home'
 import HomeEventSection from '../components/HomeEventSection'
 import { getDateTimestamp, getDaysUntilEnd } from '../utils/homeDateUtils'
+import { getHomeHeroLabel, selectHomeHeroEvent } from '../utils/homeHeroUtils'
 
 function GuestHome() {
   const navigate = useNavigate()
@@ -15,7 +16,6 @@ function GuestHome() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const exhibitions = useMemo(() => normalizePublicExhibitions(homeData), [homeData])
-  const heroArtwork = exhibitions[0]?.posterImageUrl
   const closingSoonExhibitions = useMemo(
     () =>
       [...exhibitions]
@@ -35,6 +35,17 @@ function GuestHome() {
         .slice(0, 10),
     [exhibitions],
   )
+  const currentHero = useMemo(
+    () =>
+      selectHomeHeroEvent({
+        closingSoon: closingSoonExhibitions,
+        latest: newExhibitions,
+        fallback: exhibitions,
+      }),
+    [closingSoonExhibitions, exhibitions, newExhibitions],
+  )
+  const currentHeroExhibition = currentHero?.event
+  const currentHeroLabel = currentHero ? getHomeHeroLabel(currentHero.source) : ''
 
   useEffect(() => {
     let ignore = false
@@ -76,34 +87,47 @@ function GuestHome() {
     <main className="home-page" aria-label="Arbit home">
       <AppHeader variant="home" />
 
-      <section className="hero guest-hero" aria-labelledby="guest-hero-title">
-        <div className="hero-scene" aria-hidden="true">
-          {heroArtwork && <img className="hero-artwork" src={heroArtwork} alt="" />}
-        </div>
-        <div className="hero-shade" />
-        <div className="hero-copy">
-          <span className="guest-hero-eyebrow">Culture Recommendation</span>
-          <h1 id="guest-hero-title">
-            취향을 말하면,
-            <br />
-            <em>문화의 다음 장면</em>을
-            <br />
-            찾아드립니다.
-          </h1>
-          <p className="guest-hero-description">
-            전시, 공연, 축제 사이에서 당신이 오래 머물 행사를 골라주는 문화 추천 서비스.
-          </p>
-          <div className="hero-buttons">
-            <Link className="primary-link" to="/user/signup">
-              회원가입하고 시작하기
-              <span aria-hidden="true">→</span>
-            </Link>
-            <Link className="ghost-link" to="/exhibitions/all">
-              행사 둘러보기
-            </Link>
+      {currentHeroExhibition && (
+        <section className="hero guest-hero" aria-labelledby="guest-hero-title">
+          <div className="hero-scene" aria-hidden="true">
+            {currentHeroExhibition.posterImageUrl && (
+              <img className="hero-artwork" src={currentHeroExhibition.posterImageUrl} alt="" />
+            )}
           </div>
-        </div>
-      </section>
+          <div className="hero-shade" />
+          <div className="hero-copy">
+            <div className="hero-badges">
+              {currentHeroLabel && <span className="hero-badge">{currentHeroLabel}</span>}
+              {currentHeroExhibition.status && <span className="hero-badge">{currentHeroExhibition.status}</span>}
+            </div>
+            <h1 className={getHeroTitleClassName(currentHeroExhibition.title)} id="guest-hero-title">
+              {currentHeroExhibition.title}
+            </h1>
+            {(currentHeroExhibition.period || currentHeroExhibition.venue) && (
+              <p className="hero-meta">
+                {currentHeroExhibition.venue}
+                {currentHeroExhibition.period && currentHeroExhibition.venue && <i />}
+                {currentHeroExhibition.period}
+              </p>
+            )}
+            <div className="hero-buttons">
+              {currentHeroExhibition.eventId ? (
+                <Link className="primary-link" to={`/exhibitions/${currentHeroExhibition.eventId}`}>
+                  자세히 보기
+                  <span aria-hidden="true">→</span>
+                </Link>
+              ) : (
+                <span className="primary-link is-disabled" aria-disabled="true">
+                  자세히 보기
+                </span>
+              )}
+              <Link className="ghost-link" to="/user/signup">
+                회원가입하고 시작하기
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="home-content">
         {isLoading && (
@@ -179,6 +203,16 @@ function formatPeriod(startDate?: string, endDate?: string) {
 
 function formatDate(date?: string) {
   return date ? date.replaceAll('-', '.') : ''
+}
+
+function getHeroTitleClassName(title: string) {
+  const titleLength = title.replace(/\s/g, '').length
+
+  if (titleLength > 38) {
+    return 'is-very-long-title'
+  }
+
+  return titleLength > 24 ? 'is-long-title' : undefined
 }
 
 function getFallbackArtwork(index: number): ExhibitionArtwork {
