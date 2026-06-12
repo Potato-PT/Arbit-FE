@@ -25,7 +25,6 @@ function ReviewWrite() {
   const [verificationImageUrl, setVerificationImageUrl] = useState('')
   const [visitedYear, setVisitedYear] = useState('')
   const [visitedMonth, setVisitedMonth] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -260,30 +259,6 @@ function ReviewWrite() {
                 </select>
               </label>
             </div>
-          </fieldset>
-
-          <fieldset className="review-public-field">
-            <legend>공개 여부</legend>
-            <label>
-              <input
-                checked={isPublic}
-                name="visibility"
-                onChange={() => setIsPublic(true)}
-                disabled={isSubmitting}
-                type="radio"
-              />
-              공개
-            </label>
-            <label>
-              <input
-                checked={!isPublic}
-                name="visibility"
-                onChange={() => setIsPublic(false)}
-                disabled={isSubmitting}
-                type="radio"
-              />
-              비공개
-            </label>
           </fieldset>
 
           {error && <p className="review-error">{error}</p>}

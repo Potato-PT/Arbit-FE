@@ -3,7 +3,7 @@ import { clearAuthStorage } from '../../../api/authStorage'
 import { createAuthorizationHeaders } from '../../../api/headers'
 import { ApiError } from '../../user/api/authApi'
 
-export type EventsSort = 'match' | 'deadline' | 'latest' | 'rating'
+export type EventsSort = 'deadline' | 'latest' | 'rating'
 export type EventSearchSort = 'deadline' | 'latest' | 'rating' | 'distance'
 export type EventStatus = 'ongoing' | 'upcoming' | 'ended' | '진행중' | '예정' | '종료'
 export type EventSearchStatus = 'ONGOING' | 'UPCOMING' | 'CLOSED'
@@ -82,6 +82,8 @@ export type EventsQuery = {
   endDate?: string
   sort?: EventsSort
 }
+
+export type EventMatchesQuery = Omit<EventsQuery, 'sort'>
 
 export type EventSearchQuery = {
   keyword?: string
@@ -232,6 +234,30 @@ export async function getEvents(query: EventsQuery = {}) {
   }
 
   throw new ApiError('전시 목록 응답 형식이 올바르지 않습니다.', response.status)
+}
+
+export async function getMatchedEvents(query: EventMatchesQuery = {}) {
+  const headers = createAuthorizationHeaders()
+
+  if (!headers.Authorization) {
+    throw new ApiError('로그인이 필요합니다.', 401)
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}${EVENTS_API_PATH}/matches${createQueryString(query)}`,
+    {
+      method: 'GET',
+      headers,
+    },
+  )
+
+  const result = await parseEventsResponse<EventsResponse | EventSummary[]>(response)
+
+  if (Array.isArray(result) || Array.isArray(result.events)) {
+    return result
+  }
+
+  throw new ApiError('추천 전시 목록 응답 형식이 올바르지 않습니다.', response.status)
 }
 
 export async function searchEvents(query: EventSearchQuery = {}) {

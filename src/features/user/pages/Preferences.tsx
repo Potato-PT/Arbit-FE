@@ -102,7 +102,12 @@ function Preferences() {
     try {
       const eventIds = await savePreferences(selectedEventIds)
 
-      saveRecommendationEventIds(eventIds)
+      const didCacheRecommendationEventIds = saveRecommendationEventIds(eventIds)
+
+      if (!didCacheRecommendationEventIds) {
+        console.warn('Recommendation event IDs were not cached after saving preferences.')
+      }
+
       completePreferencesOnboarding()
       navigate('/', { replace: true })
     } catch (error) {

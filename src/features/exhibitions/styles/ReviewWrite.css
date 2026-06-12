@@ -61,8 +61,7 @@
 }
 
 .review-rating-field,
-.review-visit-field,
-.review-public-field {
+.review-visit-field {
   margin: 0;
   padding: 0;
   border: 0;
@@ -70,7 +69,6 @@
 
 .review-rating-field legend,
 .review-visit-field legend,
-.review-public-field legend,
 .review-field span {
   margin-bottom: 11px;
   color: #6b625b;
@@ -202,33 +200,6 @@
 .visit-selects select:focus {
   border-color: #d9bc99;
   box-shadow: 0 0 0 3px rgba(217, 188, 153, 0.18);
-}
-
-.review-public-field {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.review-public-field legend {
-  width: 100%;
-}
-
-.review-public-field label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #4d4741;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.review-public-field input {
-  width: 16px;
-  height: 16px;
-  accent-color: #d9bc99;
 }
 
 .review-error {

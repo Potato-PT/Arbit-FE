@@ -4,7 +4,7 @@ import '../styles/Login.css'
 import artGallery from '../../../assets/artgallery.png'
 import AppFooter from '../../../components/AppFooter'
 import AppHeader from '../../../components/AppHeader'
-import { saveAuthenticatedUsername } from '../../../api/authStorage'
+import { beginPreferencesOnboarding, saveAuthenticatedUsername } from '../../../api/authStorage'
 import { getHomeRecommendations } from '../../../api/homeApi'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { ApiError, guestLogin, login as loginUser } from '../api/authApi'
@@ -64,7 +64,8 @@ function Login() {
     try {
       const tokens = await guestLogin()
       setAuthTokens(tokens)
-      navigate('/', { replace: true })
+      beginPreferencesOnboarding()
+      navigate('/user/preferences', { replace: true, state: { fromSignup: true } })
     } catch {
       setErrorMessage('게스트 로그인 중 오류가 발생했습니다.')
     } finally {

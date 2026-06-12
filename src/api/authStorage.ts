@@ -6,6 +6,8 @@ export const REFRESH_TOKEN_STORAGE_KEY = 'refreshToken'
 export const AUTHENTICATED_USERNAME_STORAGE_KEY = 'arbit.authenticatedUsername'
 export const RECOMMENDATION_EVENT_IDS_STORAGE_KEY = 'arbit.recommendationEventIdsByUsername'
 export const PREFERENCES_ONBOARDING_STORAGE_KEY = 'arbit.preferencesOnboarding'
+const MIN_RECOMMENDATION_EVENT_ID_COUNT = 5
+const MAX_RECOMMENDATION_EVENT_ID_COUNT = 20
 
 function readLocalStorage(key: string) {
   if (typeof window === 'undefined') {
@@ -106,19 +108,19 @@ export function completePreferencesOnboarding() {
 
 export function saveRecommendationEventIds(eventIds: string[]) {
   if (typeof window === 'undefined') {
-    return
+    return false
   }
 
   const validEventIds = [...new Set(eventIds.filter(isValidEventId))]
 
   if (!isValidEventIdCount(validEventIds)) {
-    throw new Error('Invalid recommendation event IDs')
+    return false
   }
 
   const username = readLocalStorage(AUTHENTICATED_USERNAME_STORAGE_KEY)
 
   if (!username) {
-    throw new Error('Missing authenticated username')
+    return false
   }
 
   const storedEventIdsByUsername = readLocalStorage(RECOMMENDATION_EVENT_IDS_STORAGE_KEY)
@@ -128,6 +130,8 @@ export function saveRecommendationEventIds(eventIds: string[]) {
     RECOMMENDATION_EVENT_IDS_STORAGE_KEY,
     JSON.stringify({ ...eventIdsByUsername, [username]: validEventIds }),
   )
+
+  return true
 }
 
 function normalizeJwt(token: unknown, label: string) {
@@ -155,7 +159,10 @@ function isValidEventId(eventId: unknown): eventId is string {
 }
 
 function isValidEventIdCount(eventIds: string[]) {
-  return eventIds.length >= 4 && eventIds.length <= 5
+  return (
+    eventIds.length >= MIN_RECOMMENDATION_EVENT_ID_COUNT &&
+    eventIds.length <= MAX_RECOMMENDATION_EVENT_ID_COUNT
+  )
 }
 
 function parseEventIdsByUsername(value: string) {

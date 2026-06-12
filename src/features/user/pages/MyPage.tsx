@@ -353,7 +353,7 @@ function MyPage() {
             </button>
           ))}
           <button
-            className="mypage-tab is-test"
+            className="mypage-tab"
             type="button"
             onClick={handleOpenPreferencesTest}
           >

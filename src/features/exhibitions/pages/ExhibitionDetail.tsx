@@ -16,8 +16,6 @@ import {
 import { addBookmark, removeBookmark } from '../api/bookmarksApi'
 import '../styles/ExhibitionDetail.css'
 
-const HOMEPAGE_CLICK_TRACKING_TIMEOUT_MS = 800
-
 function ExhibitionDetail() {
   const { id } = useParams()
   const eventId = id
@@ -196,24 +194,21 @@ function ExhibitionDetail() {
     }
   }
 
-  const handleHomepageClick = async (event: MouseEvent<HTMLAnchorElement>, url: string) => {
+  const handleHomepageClick = (event: MouseEvent<HTMLAnchorElement>, url: string) => {
     event.preventDefault()
 
-    const externalWindow = window.open('', '_blank', 'noopener,noreferrer')
+    const normalizedUrl = normalizeExternalHomepageUrl(url)
 
-    if (eventId) {
-      await Promise.race([
-        recordHomepageClick(eventId).catch(() => undefined),
-        wait(HOMEPAGE_CLICK_TRACKING_TIMEOUT_MS),
-      ])
-    }
-
-    if (externalWindow) {
-      externalWindow.location.href = url
+    if (!normalizedUrl) {
+      window.alert('홈페이지 주소가 없습니다.')
       return
     }
 
-    window.location.href = url
+    if (eventId) {
+      void recordHomepageClick(eventId).catch(() => undefined)
+    }
+
+    window.open(normalizedUrl, '_blank', 'noopener,noreferrer')
   }
 
   if (isLoading) {
@@ -252,7 +247,9 @@ function ExhibitionDetail() {
   }
 
   const renderHomepageButton = (label: string) => {
-    if (!hasExternalHomepageUrl(exhibition.url)) {
+    const homepageUrl = normalizeExternalHomepageUrl(exhibition.url)
+
+    if (!homepageUrl) {
       return (
         <span className="homepage-button is-disabled" aria-disabled="true" title="홈페이지 주소가 없습니다.">
           홈페이지 없음
@@ -264,11 +261,11 @@ function ExhibitionDetail() {
     return (
       <a
         className="homepage-button"
-        href={exhibition.url}
+        href={homepageUrl}
         target="_blank"
         rel="noreferrer"
         onClick={(event) => {
-          void handleHomepageClick(event, exhibition.url)
+          handleHomepageClick(event, homepageUrl)
         }}
       >
         {label}
@@ -495,14 +492,18 @@ function normalizeEventDetail(item: EventDetail) {
   }
 }
 
-function hasExternalHomepageUrl(url: string) {
-  return Boolean(url.trim()) && url !== '#'
-}
+function normalizeExternalHomepageUrl(url?: string | null) {
+  const trimmedUrl = url?.trim()
 
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
+  if (!trimmedUrl || trimmedUrl === '#') {
+    return ''
+  }
+
+  if (/^https?:\/\//i.test(trimmedUrl)) {
+    return trimmedUrl
+  }
+
+  return `https://${trimmedUrl}`
 }
 
 function normalizeReview(review: EventReviewListItem, index: number) {

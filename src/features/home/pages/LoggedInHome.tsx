@@ -270,9 +270,21 @@ function LoggedInHome() {
         )}
 
         {!isLoading && !errorMessage && currentRecommendedExhibitions.length === 0 && (
-          <StatusMessage className="home-state">
-            표시할 추천 이벤트가 없습니다.
-          </StatusMessage>
+          <section className="home-recommendation-empty" aria-labelledby="recommend-empty-title">
+            <div>
+              <span className="home-eyebrow">Personalised</span>
+              <h2 id="recommend-empty-title">아직 취향이 설정되지 않았어요</h2>
+              <p>
+                관심 있는 행사를 5개 이상 골라주세요.
+                <br />
+                Arbit가 취향을 분석해 딱 맞는 행사를 추천해드려요.
+              </p>
+            </div>
+            <Link className="home-empty-action" to="/user/preferences">
+              취향 설정하기
+              <span aria-hidden="true">→</span>
+            </Link>
+          </section>
         )}
 
         {!isLoading && !errorMessage && currentRecommendedExhibitions.length > 0 && (

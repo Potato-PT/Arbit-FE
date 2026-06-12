@@ -1,21 +1,21 @@
 # Agent Guide
 
-This guide is for AI coding agents and developers working on `capstone-ui`. Inspect the current code before editing, preserve existing behavior unless the user asks for a change, and use Swagger as the source of truth for backend contracts.
+This guide is for AI coding agents and developers working on `capstone-ui`. Read the relevant code before editing, preserve existing behavior unless a task explicitly asks for a change, and use Swagger as the source of truth for backend contracts.
 
 ## Project Context
 
-`capstone-ui` is a React, TypeScript, and Vite frontend for Arbit, an exhibition and cultural event recommendation service. Most user-facing text is Korean. The app includes guest and logged-in home screens, exhibition discovery, event detail, review writing, preference onboarding, authentication, and My Page.
+`capstone-ui` is the React, TypeScript, and Vite frontend for Arbit, an exhibition and cultural event recommendation service. Most user-facing copy is Korean. The app includes guest and logged-in home screens, exhibition discovery, event detail, review writing, preference onboarding, authentication, bookmarks, and My Page.
 
-## Public Links
+Public references:
 
 - Service: `https://arbit-umber.vercel.app/`
-- Backend API server: `https://piec.store`
+- Backend API: `https://piec.store`
 - Swagger UI: `https://piec.store/swagger-ui/index.html`
 - Swagger JSON: `https://piec.store/v3/api-docs`
 
 ## Commands
 
-Use only scripts defined in `package.json`.
+Use scripts from `package.json`.
 
 ```bash
 npm run dev
@@ -30,26 +30,26 @@ Run `npm run lint` and `npm run build` after code changes unless the user explic
 
 Routes are declared in `src/main.tsx`.
 
-- `/`
-- `/exhibitions/all`
-- `/exhibitions/:id`
-- `/exhibitions/:id/review`
-- `/user/login`
-- `/user/signup`
-- `/user/preferences`
-- `/user/mypage`
+- `/`: home
+- `/exhibitions/all`: all exhibitions and events
+- `/exhibitions/:id`: event detail
+- `/exhibitions/:id/review`: review writing
+- `/user/login`: login
+- `/user/signup`: signup
+- `/user/preferences`: preference onboarding
+- `/user/mypage`: My Page
 
 Legacy `/exhibitions/search` and `/exhibition/all` redirect to `/exhibitions/all`.
 
 ## Key Files
 
-- `README.md`: public GitHub-facing project overview; keep Korean wording natural and use repository-relative links
+- `README.md`: public GitHub-facing project documentation in Korean
+- `vite.config.ts`: Vite dev proxy configuration
 - `src/api/config.ts`: API base URL configuration
-- `vite.config.ts`: development proxy configuration
-- `src/api/authStorage.ts`: token and onboarding storage
-- `src/api/headers.ts`: request header helpers
-- `src/api/homeApi.ts`: home and recommendation API helpers
-- `src/features/exhibitions/api/eventsApi.ts`: events, detail, reviews, homepage-click API helpers
+- `src/api/authStorage.ts`: tokens, auth flags, onboarding markers, optional recommendation ID cache
+- `src/api/headers.ts`: API header helpers
+- `src/api/homeApi.ts`: home and home recommendation API helpers
+- `src/features/exhibitions/api/eventsApi.ts`: event list, match list, search, detail, reviews, homepage click API helpers
 - `src/features/exhibitions/api/bookmarksApi.ts`: bookmark mutations
 - `src/features/user/api/authApi.ts`: signup, login, guest login, logout
 - `src/features/user/api/preferencesApi.ts`: preference seed events and preference save
@@ -57,81 +57,85 @@ Legacy `/exhibitions/search` and `/exhibition/all` redirect to `/exhibitions/all
 
 ## API Rules
 
-Use `API_BASE_URL` from `src/api/config.ts`. It reads `VITE_API_BASE_URL`. In development, the default is an empty string so `/api` requests go through the Vite proxy. In production, the fallback is `https://piec.store`.
+Use `API_BASE_URL` from `src/api/config.ts`.
 
-The Vite proxy sends `/api` requests to `VITE_API_PROXY_TARGET` or `https://piec.store`.
+- Development fallback: `''`, so `/api` requests go through the Vite proxy.
+- Production fallback: `https://piec.store`.
+- Vite proxy target: `VITE_API_PROXY_TARGET` or `https://piec.store`.
 
-Swagger references:
+Do not invent request bodies, query parameters, response shapes, or fallback mock data. Confirm current behavior against Swagger before changing API contracts.
 
-- UI: `https://piec.store/swagger-ui/index.html`
-- JSON: `https://piec.store/v3/api-docs`
+Current stable endpoint rules:
+
+- `GET /api/home` is public.
+- `GET /api/home/recommendations` requires bearer auth.
+- `GET /api/preferences/categories` is public and the UI uses up to 20 seed events.
+- `POST /api/preferences` requires bearer auth and saves 5 to 20 selected event IDs.
+- `GET /api/events` is public and uses only `deadline`, `latest`, and `rating` sort values.
+- `GET /api/events/matches` requires bearer auth and is used for match/recommendation sort.
+- `GET /api/events/search` is the search endpoint and is also used for distance sort.
+- `POST /api/events/{eventId}/actions/homepage-click` records homepage clicks. External navigation must not depend on this request succeeding.
+- Bookmark, review mutation, preference save, My Page, and recommendation APIs require bearer auth as documented in Swagger.
 
 Header helpers:
 
-- `createAuthorizationHeaders()` for bearer-token requests without a JSON body
-- `createJsonHeaders()` for JSON body requests
-- `createUploadHeaders()` for file upload requests
+- `createAuthorizationHeaders()` for authenticated requests without JSON bodies.
+- `createJsonHeaders()` for JSON body requests.
+- `createUploadHeaders()` for uploads.
 
-Do not manually set `Content-Type` for `FormData` uploads.
+Do not manually set `Content-Type` for `FormData`; let the browser set the multipart boundary.
 
-## Current API Contracts
+## Authentication And Storage
 
-- `GET /api/home`: public home data
-- `GET /api/home/recommendations`: authenticated stored recommendations, bearer token only
-- `GET /api/preferences/categories`: public preference seed events, frontend uses up to 20
-- `POST /api/preferences`: authenticated preference save, body is wrapped as `{ success: true, data: selectedEventIds, error: null }`
-- `GET /api/events`: event list; sort values are `match`, `deadline`, `latest`, `rating`
-- `GET /api/events/search`: search endpoint; use this for keyword search and distance sort
-- `POST /api/events/{eventId}/actions/homepage-click`: authenticated click collection, no request body
-- Bookmark, review, and My Page mutation requests require bearer tokens as documented in Swagger
+Auth state lives in `src/api/authStorage.ts`.
 
-Do not invent request bodies, query parameters, or fallback mock data. If Swagger and the UI requirement conflict, ask for backend confirmation unless the correct behavior is unambiguous.
+- Access token key: `accessToken`
+- Refresh token key: `refreshToken`
+- Login status key: `arbit.isLoggedIn`
+- Username key: `arbit.authenticatedUsername`
+- Preference onboarding key: `arbit.preferencesOnboarding` in `sessionStorage`
+- Recommendation ID cache key: `arbit.recommendationEventIdsByUsername`
 
-## Auth And Storage
+The recommendation ID cache is optional and must not block preference save or home navigation. Guest login may not have an authenticated username, so cache writes must be best-effort.
 
-Auth state is managed in `src/api/authStorage.ts`.
-
-- `accessToken` and `refreshToken` are stored in `localStorage`
-- login status key: `arbit.isLoggedIn`
-- authenticated username key: `arbit.authenticatedUsername`
-- preference onboarding marker: `arbit.preferencesOnboarding` in `sessionStorage`
-
-On 401 responses for authenticated flows, existing helpers generally clear auth storage and redirect to `/user/login`. Preserve that behavior unless the user explicitly asks to change it.
+On 401 responses for authenticated flows, existing helpers often clear auth storage and redirect to `/user/login`. Preserve that behavior unless the task explicitly changes auth flow.
 
 ## UI And Styling Rules
 
-- Preserve visual design, layout, and UX flow unless the user explicitly requests UI changes.
-- Reuse existing CSS files and class naming prefixes such as `home-*`, `all-*`, `detail-*`, `login-*`, `signup-*`, `preferences-*`, and `mypage-*`.
-- Shared layout should use `AppHeader`, `AppFooter`, and existing status components where appropriate.
-- Use the project-wide `--font-sans` variable from `src/index.css`; keep existing serif display overrides.
+- Preserve visual design, layout, colors, spacing, and Korean copy unless the task asks for UI changes.
+- Reuse existing screen CSS files and class prefixes such as `home-*`, `all-*`, `detail-*`, `review-*`, `login-*`, `signup-*`, `preferences-*`, and `mypage-*`.
+- Use `AppHeader`, `AppFooter`, and `StatusMessage` for shared structure and states.
+- Use `Link` for internal React Router navigation. Use `<a>` for external URLs.
+- Homepage external URLs should be normalized before opening; missing URLs should not open blank tabs.
 - Keep loading, empty, and error states consistent with nearby screens.
-- Use links for navigation and buttons for in-page actions.
 
 ## Things Not To Change Without Confirmation
 
-- Backend endpoint contracts not documented in Swagger
-- Route structure or redirects
-- Visible design, spacing, colors, and user-facing flow
+- Swagger-defined API contracts
+- Route structure and redirects
 - Auth storage keys
-- Preference selection requirement of 5 to 20 events from up to 20 API seed events
+- Preference selection policy of 5 to 20 events
+- Existing visual design and user-facing flow
 - API-backed flows to local mock data
-- New dependencies or state libraries
+- New runtime dependencies or state libraries
+- Working code that only appears unused without verifying call sites
 
-## Refactoring Guidance
+## Development Conventions
 
-Safe refactors are welcome when they improve readability, type safety, naming, or duplication without changing behavior. Avoid refactors that could affect API behavior, routing, layout, or visible functionality. If a risky refactor is identified, leave a note instead of applying it.
-
-## Documentation Guidance
-
-When editing `README.md`, preserve the major feature list, tech stack, setup commands, environment variables, routes, and API integration notes unless the user asks to remove them. Use GitHub-compatible relative links such as `src/api/config.ts`, not local absolute paths.
+- Prefer existing project patterns over new abstractions.
+- Keep edits scoped to the requested feature or bug.
+- Use TypeScript types near the API layer to document response variants.
+- Preserve Korean user-facing copy style.
+- Avoid large refactors when a focused fix is enough.
+- If backend and frontend expectations conflict, document the mismatch and ask for backend confirmation unless Swagger is explicit.
 
 ## Verification
 
-For most code changes:
+For most changes:
 
 ```bash
 npm run lint
 npm run build
 ```
 
-For UI or API-flow changes, also run the dev server and inspect the affected route and Network requests.
+For UI or API-flow changes, also run the dev server and inspect the affected route and Network requests when possible. A `502` from `/api/*` through Vite usually means the proxied backend returned `502`; verify by calling the backend URL directly.
