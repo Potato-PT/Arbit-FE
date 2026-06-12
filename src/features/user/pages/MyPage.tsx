@@ -446,6 +446,11 @@ function ReviewsPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
   }, [])
 
   const handleReviewDelete = async (review: ApiMyReview) => {
+    if (!review.event_id) {
+      window.alert('리뷰에 연결된 이벤트 정보를 찾을 수 없어 삭제할 수 없습니다.')
+      return
+    }
+
     if (!window.confirm('이 리뷰를 삭제하시겠습니까?')) {
       return
     }
@@ -453,7 +458,7 @@ function ReviewsPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
     setPendingDeleteReviewIds((current) => new Set(current).add(review.reviewId))
 
     try {
-      await deleteMyReview(review.reviewId)
+      await deleteMyReview(review.event_id, review.reviewId)
       setReviews((currentReviews) =>
         currentReviews.filter((currentReview) => currentReview.reviewId !== review.reviewId),
       )
@@ -534,7 +539,7 @@ function ReviewsPanel({ tasteKeywords }: { tasteKeywords: string[] }) {
                     className="review-delete"
                     type="button"
                     aria-label={`${review.title} 후기 삭제`}
-                    disabled={pendingDeleteReviewIds.has(review.reviewId)}
+                    disabled={!review.event_id || pendingDeleteReviewIds.has(review.reviewId)}
                     onClick={() => void handleReviewDelete(review)}
                   >
                     <TrashIcon />

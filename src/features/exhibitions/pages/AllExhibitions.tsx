@@ -4,7 +4,9 @@ import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import { readAccessToken } from '../../../api/authStorage'
 import {
+  getEvents,
   searchEvents,
+  type EventsSort,
   type EventSearchSort,
   type EventSummary,
 } from '../api/eventsApi'
@@ -80,12 +82,18 @@ function AllExhibitions() {
         const end = parseIsoDate(item.endDate)
         const matchesStartDate = !startDate || end >= parseIsoDate(startDate)
         const matchesEndDate = !endDate || start <= parseIsoDate(endDate)
+        const matchesPeriod = selectedPeriods.length === 0 || selectedPeriods.some((period) =>
+          matchesPeriodFilter(item.status, period),
+        )
+        const matchesPrice = selectedPriceTypes.length === 0 || selectedPriceTypes.includes(item.priceType)
 
-        return matchesStartDate && matchesEndDate
+        return matchesStartDate && matchesEndDate && matchesPeriod && matchesPrice
       })
-  }, [endDate, normalizedExhibitions, startDate])
+  }, [endDate, normalizedExhibitions, selectedPeriods, selectedPriceTypes, startDate])
   const visibleExhibitions = filteredExhibitions.slice(0, visibleCount)
   const remainingCount = Math.max(filteredExhibitions.length - visibleExhibitions.length, 0)
+  const isUsingEventListEndpoint = !searchQuery.trim() && sortOption !== '거리순'
+  const showMatchSortNotice = isUsingEventListEndpoint && toEventsSort(sortOption) === 'match'
 
   useEffect(() => {
     setSortOption(getSortOptionFromQuery(sortQuery))
@@ -106,21 +114,31 @@ function AllExhibitions() {
           throw new ApiError('거리순 정렬을 사용하려면 위치 권한이 필요합니다.', 400)
         }
 
-        const response = await searchEvents({
-          keyword: searchQuery.trim() || undefined,
-          category: activeFilter === '전체' ? undefined : activeFilter,
-          district: selectedDistricts,
-          status: selectedPeriods.map(toSearchStatus),
-          free: toSearchFree(selectedPriceTypes),
-          sort: toSearchSort(sortOption),
-          lat: coordinates?.lat,
-          lng: coordinates?.lng,
-          page: 0,
-          size: pageSize,
-        })
+        const trimmedSearchQuery = searchQuery.trim()
+        const shouldUseSearchEndpoint = Boolean(trimmedSearchQuery) || sortOption === '거리순'
+        const response = shouldUseSearchEndpoint
+          ? await searchEvents({
+              keyword: trimmedSearchQuery || undefined,
+              category: activeFilter === '전체' ? undefined : activeFilter,
+              district: selectedDistricts,
+              status: selectedPeriods.map(toSearchStatus),
+              free: toSearchFree(selectedPriceTypes),
+              sort: toSearchSort(sortOption),
+              lat: coordinates?.lat,
+              lng: coordinates?.lng,
+              page: 0,
+              size: pageSize,
+            })
+          : await getEvents({
+              category: activeFilter === '전체' ? undefined : activeFilter,
+              district: selectedDistricts,
+              startDate: startDate || undefined,
+              endDate: endDate || undefined,
+              sort: toEventsSort(sortOption),
+            })
 
         if (!ignore) {
-          setApiExhibitions(response)
+          setApiExhibitions(Array.isArray(response) ? response : response.events)
           setVisibleCount(initialDisplayCount)
         }
       } catch (error) {
@@ -144,7 +162,7 @@ function AllExhibitions() {
     return () => {
       ignore = true
     }
-  }, [activeFilter, searchQuery, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption])
+  }, [activeFilter, endDate, searchQuery, selectedDistricts, selectedPeriods, selectedPriceTypes, sortOption, startDate])
 
   const resetFilters = () => {
     setActiveFilter('전체')
@@ -423,6 +441,11 @@ function AllExhibitions() {
                 </select>
               </label>
             </div>
+            {showMatchSortNotice && (
+              <p className="all-sort-notice">
+                추천순은 취향 기반으로 최대 10개의 전시·공연만 표시됩니다.
+              </p>
+            )}
             <button className="all-mobile-filter-button" type="button" onClick={() => setIsMobileFilterOpen(true)}>
               <FilterIcon />
               필터
@@ -674,7 +697,7 @@ function normalizeEventSummary(item: EventSummary, index: number): AllExhibition
     posterImageUrl: item.posterImageUrl,
     status: item.status ?? '',
     url: item.url,
-    rating: item.rating,
+    rating: item.rating ?? item.averageRating,
     bookmarked: item.bookmarked,
   }
 }
@@ -711,6 +734,18 @@ function toSearchSort(sortOption: SortOption): EventSearchSort | undefined {
   return sortByOption[sortOption]
 }
 
+function toEventsSort(sortOption: SortOption): EventsSort | undefined {
+  const sortByOption: Record<SortOption, EventsSort | undefined> = {
+    추천순: 'match',
+    '마감 임박순': 'deadline',
+    최신순: 'latest',
+    평점순: 'rating',
+    거리순: undefined,
+  }
+
+  return sortByOption[sortOption]
+}
+
 function getSortOptionFromQuery(sort: string | null): SortOption {
   const sortByQuery: Record<string, SortOption> = {
     match: '추천순',
@@ -733,6 +768,16 @@ function toSearchFree(priceTypes: AllExhibitionPriceType[]) {
   }
 
   return priceTypes[0] === '무료'
+}
+
+function matchesPeriodFilter(status: string, period: PeriodFilter) {
+  const normalizedStatus = status.toUpperCase()
+
+  if (period === '진행중') {
+    return normalizedStatus === 'ONGOING' || status === '진행중'
+  }
+
+  return normalizedStatus === 'UPCOMING' || status === '예정'
 }
 
 function getCurrentCoordinates(): Promise<{ lat: number; lng: number } | undefined> {

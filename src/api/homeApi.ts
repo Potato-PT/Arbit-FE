@@ -87,24 +87,12 @@ export async function getHome() {
   return result
 }
 
-export async function getHomeRecommendations(eventIds: string[]) {
-  const validEventIds = [...new Set(eventIds.filter((eventId) => eventId.trim()))]
-
-  if (validEventIds.length < 4 || validEventIds.length > 5) {
-    throw new ApiError('추천 이벤트는 4~5개를 선택해야 합니다.', 400)
-  }
-
+export async function getHomeRecommendations() {
   if (!hasValidAccessTokenForApi()) {
     throw new ApiError('로그인이 필요합니다.', 401)
   }
 
-  const params = new URLSearchParams()
-
-  validEventIds.forEach((eventId) => {
-    params.append('eventIds', String(eventId))
-  })
-
-  const response = await fetch(`${API_BASE_URL}${HOME_API_PATH}/recommendations?${params.toString()}`, {
+  const response = await fetch(`${API_BASE_URL}${HOME_API_PATH}/recommendations`, {
     method: 'GET',
     headers: createAuthorizationHeaders(),
   })

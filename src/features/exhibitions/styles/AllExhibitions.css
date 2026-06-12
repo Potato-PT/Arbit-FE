@@ -257,6 +257,18 @@
   border-color: #dbc6ae;
 }
 
+.all-sort-notice {
+  margin: -10px 0 24px;
+  border: 1px solid rgba(217, 194, 167, 0.55);
+  border-radius: 4px;
+  background: #fbf8f3;
+  color: #756553;
+  padding: 11px 14px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
 .all-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1108,6 +1120,17 @@
   padding: 0 20px 0 4px;
   color: #6b6560;
   font-size: 11px;
+}
+
+.all-sort-notice {
+  margin-top: -8px;
+  margin-bottom: 24px;
+  border-color: rgba(224, 213, 200, 0.7);
+  border-radius: 2px;
+  background: #fdfbf8;
+  color: #7c6c59;
+  font-size: 11px;
+  letter-spacing: 0.02em;
 }
 
 .all-grid {

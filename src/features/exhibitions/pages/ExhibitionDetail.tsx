@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type MouseEvent, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
@@ -9,11 +9,14 @@ import {
   deleteEventReview,
   getEventDetail,
   getEventReviews,
+  recordHomepageClick,
   type EventDetail,
   type EventReviewListItem,
 } from '../api/eventsApi'
 import { addBookmark, removeBookmark } from '../api/bookmarksApi'
 import '../styles/ExhibitionDetail.css'
+
+const HOMEPAGE_CLICK_TRACKING_TIMEOUT_MS = 800
 
 function ExhibitionDetail() {
   const { id } = useParams()
@@ -193,6 +196,26 @@ function ExhibitionDetail() {
     }
   }
 
+  const handleHomepageClick = async (event: MouseEvent<HTMLAnchorElement>, url: string) => {
+    event.preventDefault()
+
+    const externalWindow = window.open('', '_blank', 'noopener,noreferrer')
+
+    if (eventId) {
+      await Promise.race([
+        recordHomepageClick(eventId).catch(() => undefined),
+        wait(HOMEPAGE_CLICK_TRACKING_TIMEOUT_MS),
+      ])
+    }
+
+    if (externalWindow) {
+      externalWindow.location.href = url
+      return
+    }
+
+    window.location.href = url
+  }
+
   if (isLoading) {
     return (
       <main className="detail-page">
@@ -225,6 +248,32 @@ function ExhibitionDetail() {
           role="alert"
         />
       </main>
+    )
+  }
+
+  const renderHomepageButton = (label: string) => {
+    if (!hasExternalHomepageUrl(exhibition.url)) {
+      return (
+        <span className="homepage-button is-disabled" aria-disabled="true" title="홈페이지 주소가 없습니다.">
+          홈페이지 없음
+          <ExternalLinkIcon />
+        </span>
+      )
+    }
+
+    return (
+      <a
+        className="homepage-button"
+        href={exhibition.url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(event) => {
+          void handleHomepageClick(event, exhibition.url)
+        }}
+      >
+        {label}
+        <ExternalLinkIcon />
+      </a>
     )
   }
 
@@ -315,10 +364,7 @@ function ExhibitionDetail() {
           </dl>
 
           <div className="detail-actions">
-            <a className="homepage-button" href={exhibition.url} target="_blank" rel="noreferrer">
-              홈페이지 바로가기
-              <ExternalLinkIcon />
-            </a>
+            {renderHomepageButton('홈페이지 이동하기')}
             <button
               className="bookmark-button"
               type="button"
@@ -401,10 +447,7 @@ function ExhibitionDetail() {
       <AppFooter />
 
       <div className="sticky-detail-actions">
-        <a className="homepage-button" href={exhibition.url} target="_blank" rel="noreferrer">
-          홈페이지
-          <ExternalLinkIcon />
-        </a>
+        {renderHomepageButton('홈페이지')}
         <button
           className="bookmark-button"
           type="button"
@@ -450,6 +493,16 @@ function normalizeEventDetail(item: EventDetail) {
     rating,
     bookmarked: Boolean(item.bookmarked),
   }
+}
+
+function hasExternalHomepageUrl(url: string) {
+  return Boolean(url.trim()) && url !== '#'
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
 }
 
 function normalizeReview(review: EventReviewListItem, index: number) {

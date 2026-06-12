@@ -4,10 +4,7 @@ import '../styles/Login.css'
 import artGallery from '../../../assets/artgallery.png'
 import AppFooter from '../../../components/AppFooter'
 import AppHeader from '../../../components/AppHeader'
-import {
-  readRecommendationEventIds,
-  saveAuthenticatedUsername,
-} from '../../../api/authStorage'
+import { saveAuthenticatedUsername } from '../../../api/authStorage'
 import { getHomeRecommendations } from '../../../api/homeApi'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { ApiError, guestLogin, login as loginUser } from '../api/authApi'
@@ -35,15 +32,8 @@ function Login() {
       setAuthTokens(tokens)
       saveAuthenticatedUsername(username)
 
-      const eventIds = readRecommendationEventIds()
-
-      if (eventIds.length === 0) {
-        navigate('/', { replace: true, state: { recommendationMessage: '회원가입 시 저장된 취향 추천 정보가 없습니다.' } })
-        return
-      }
-
       try {
-        const recommendations = await getHomeRecommendations(eventIds)
+        const recommendations = await getHomeRecommendations()
 
         navigate('/', { replace: true, state: { recommendations } })
       } catch (error) {

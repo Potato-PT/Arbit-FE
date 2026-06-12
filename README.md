@@ -1,164 +1,157 @@
 # Arbit UI
 
-Arbit UI는 전시와 문화 행사를 탐색하고, 전시 상세와 리뷰를 확인하며, 사용자 프로필을 관리할 수 있는 React 프론트엔드 프로젝트입니다. React, TypeScript, Vite, React Router를 사용합니다.
+Arbit UI는 전시와 문화 행사를 탐색하고, 취향 기반 추천을 확인하며, 후기와 북마크를 관리할 수 있는 React 프론트엔드입니다. 백엔드 API와 연동해 홈, 전시 전체보기, 상세, 후기 작성, 취향 선택, 로그인/회원가입, 마이페이지 흐름을 제공합니다.
 
-홈, 전시 목록, 전시 상세, 후기 작성, 취향 선택, 로그인/회원가입, 마이페이지 흐름은 설정된 백엔드 base URL을 사용하는 API 함수와 연결되어 있습니다.
+## 배포 주소
+
+- 서비스 URL: https://arbit-umber.vercel.app/
+- 백엔드 API 서버: https://piec.store
+- Swagger 문서: https://piec.store/swagger-ui/index.html
 
 ## 주요 기능
 
-- 홈 화면에서 로그인 상태에 따라 게스트용 행사 목록 또는 개인화 추천 전시 카드를 확인합니다.
-- 전시 전체보기 화면에서 필터와 정렬을 사용해 API 전시 목록을 탐색합니다.
-- 전시 전체보기 화면에서 키워드 검색, 지역, 장르, 기간, 가격 필터와 정렬을 사용합니다.
-- 전시 상세 화면에서 API 전시 정보와 리뷰를 확인합니다.
-- 후기 작성 화면에서 API로 리뷰를 등록합니다.
-- 로그인 후 홈과 전시 전체보기 화면에서 전시 북마크를 추가하거나 삭제합니다. 게스트가 홈 카드의 북마크를 누르면 로그인 화면으로 이동합니다.
-- 로그인과 회원가입 성공 시 `accessToken`, `refreshToken`을 저장합니다.
-- 로그인 후 저장된 취향 선택 이력이 있으면 개인화 추천을 불러옵니다.
-- 회원가입 직후 취향 선택 화면에서 API로 이벤트 후보를 불러오고 5개의 선택 결과를 저장합니다.
-- 마이페이지에서 프로필 조회, 닉네임 수정, 프로필 이미지 업로드, 내 리뷰 목록, 북마크 목록, 로그아웃을 사용할 수 있습니다.
+- 로그인 상태에 따라 게스트 홈 또는 개인화 추천 홈을 표시
+- 전시·공연 목록 조회, 검색, 필터, 정렬, 더 보기 UI 제공
+- 전시·공연 상세 정보와 리뷰 목록 조회
+- 후기 작성 및 내 후기 삭제
+- 전시·공연 북마크 추가/삭제
+- 회원가입, 로그인, 게스트 로그인, 로그아웃
+- 회원가입 직후 20개 seed event 기반 취향 선택
+- 마이페이지 프로필, 닉네임, 프로필 이미지, 내 후기, 북마크 관리
+- 외부 홈페이지 이동 클릭 수집 API 연동
 
-## 시작하기
+## 기술 스택
+
+- React 19
+- TypeScript
+- Vite
+- React Router
+- ESLint
+- Plain CSS
+
+## 실행 방법
 
 ```bash
 npm install
 npm run dev
 ```
 
-Vite 개발 서버는 일반적으로 `http://localhost:5173/`에서 실행됩니다.
+개발 서버는 기본적으로 `http://localhost:5173/`에서 실행됩니다.
 
-## 명령어
-
-다음 명령어는 `package.json`에 정의되어 있습니다.
+## 사용 가능한 명령어
 
 ```bash
 npm run dev      # Vite 개발 서버 실행
-npm run build    # TypeScript 빌드와 Vite 프로덕션 빌드
-npm run lint     # ESLint 실행
-npm run preview  # 프로덕션 빌드 미리보기
+npm run build    # TypeScript 빌드 및 Vite 프로덕션 빌드
+npm run lint     # ESLint 검사
+npm run preview  # 빌드 결과 미리보기
 ```
 
 ## 환경 변수
 
-API base URL은 `src/api/config.ts`에서 관리합니다.
+API base URL은 [src/api/config.ts](src/api/config.ts)에서 관리합니다.
 
-```ts
-VITE_API_BASE_URL
-VITE_API_PROXY_TARGET
+```env
+VITE_API_BASE_URL=
+VITE_API_PROXY_TARGET=
 ```
 
-개발 서버에서는 `VITE_API_BASE_URL`이 설정되어 있지 않으면 `/api` 요청을 같은 origin으로 보내고, Vite proxy가 `VITE_API_PROXY_TARGET` 또는 기본값 `http://34.138.160.76:8080`으로 전달합니다. 프로덕션 빌드에서는 `VITE_API_BASE_URL`이 없으면 `http://34.138.160.76:8080`을 사용합니다.
+- 개발 환경에서 `VITE_API_BASE_URL`이 없으면 프론트는 `/api`로 요청하고, Vite proxy가 `VITE_API_PROXY_TARGET` 또는 기본값 `https://piec.store`로 전달합니다.
+- 프로덕션 빌드에서 `VITE_API_BASE_URL`이 없으면 `https://piec.store`를 기본 API base URL로 사용합니다.
+- Swagger 문서는 `https://piec.store/swagger-ui/index.html`, Swagger JSON은 `https://piec.store/v3/api-docs`를 기준으로 확인합니다.
 
-## 라우트
+## 주요 라우트
 
-라우트는 `src/main.tsx`에 선언되어 있습니다.
+라우트 선언은 [src/main.tsx](src/main.tsx)에 있습니다.
 
 - `/`: 홈
-- `/exhibitions/all`: 전시 전체보기
-- `/exhibitions/:id`: 전시 상세
+- `/exhibitions/all`: 전시·공연 전체보기
+- `/exhibitions/:id`: 전시·공연 상세
 - `/exhibitions/:id/review`: 후기 작성
 - `/user/login`: 로그인
 - `/user/signup`: 회원가입
-- `/user/preferences`: 회원가입 직후 최초 취향 선택
+- `/user/preferences`: 회원가입 직후 취향 선택
 - `/user/mypage`: 마이페이지
 
-기존 `/exhibitions/search`, `/exhibition/all` 경로는 `/exhibitions/all`로 이동합니다.
+`/exhibitions/search`, `/exhibition/all`은 `/exhibitions/all`로 리다이렉트됩니다.
 
-## 프로젝트 구조
+## 폴더 구조
 
 ```text
 src/
-  api/
-    authStorage.ts      # 인증 토큰 저장소 유틸
-    config.ts           # API base URL 설정
-    headers.ts          # JSON/업로드 요청 헤더 유틸
-    homeApi.ts          # 홈 API 함수
-  assets/               # 로컬 이미지 assets
-  components/           # 공통 AppHeader, AppFooter
+  api/                    # 공통 API 설정, 인증 저장소, 헤더 유틸, 홈 API
+  assets/                 # 로컬 이미지 리소스
+  components/             # 공통 AppHeader, AppFooter, StatusMessage
   features/
-    exhibitions/
-      api/              # 전시 목록, 상세, 리뷰 API 함수
-      pages/            # 전시 관련 라우트 화면
-      styles/           # 전시 화면 CSS
-      types/            # 전시 데이터 타입
-    home/
-      components/       # 홈 행사 카드 섹션
-      pages/            # 게스트용, 로그인 사용자용 홈 화면
-      utils/            # 홈 날짜 계산 유틸
-    user/
-      api/              # 인증과 마이페이지 API 함수
-      pages/            # 로그인, 회원가입, 취향 선택, 마이페이지
-      styles/           # 사용자 화면 CSS
-      types/            # 마이페이지 API 타입
-  hooks/                # 공통 React hooks
-  styles/               # 홈 화면 CSS
-  types/                # 홈 화면 타입
+    exhibitions/          # 전시 목록, 상세, 후기, 북마크 관련 코드
+      api/
+      pages/
+      styles/
+      types/
+    home/                 # 게스트 홈, 로그인 홈, 홈 카드 섹션
+      components/
+      pages/
+      utils/
+    user/                 # 인증, 취향 선택, 마이페이지 관련 코드
+      api/
+      pages/
+      styles/
+      types/
+  hooks/                  # 공통 React hooks
+  styles/                 # 홈 등 공통 스타일
+  types/                  # 홈 화면 타입
 ```
 
-전역 스타일은 `src/index.css`에서 관리합니다. Pretendard Variable을 jsDelivr에서 불러오고 `--font-sans` CSS 변수로 공통 sans-serif 글꼴 스택을 제공합니다. 화면별 CSS는 이 변수를 기본 글꼴로 사용하며 일부 제목은 별도의 serif 스타일을 유지합니다.
+전역 스타일은 [src/index.css](src/index.css)에서 관리하며, 기본 sans-serif 폰트는 `--font-sans` CSS 변수로 제공합니다.
 
-## API 연동
+## API 연동 메모
 
-API base URL은 `src/api/config.ts`의 설정을 사용합니다.
+모든 API 함수는 공통 `API_BASE_URL`을 사용합니다. 토큰이 필요한 요청은 `Authorization: Bearer {accessToken}` 헤더를 포함합니다. 파일 업로드는 `FormData`를 사용하며 `Content-Type`은 브라우저가 설정하도록 직접 지정하지 않습니다.
 
-홈 API 함수는 `src/api/homeApi.ts`에 있습니다.
+주요 API helper:
 
-- `GET /api/home`
-- `GET /api/home/recommendations`
+- [src/api/homeApi.ts](src/api/homeApi.ts)
+  - `GET /api/home`
+  - `GET /api/home/recommendations`
+- [src/features/exhibitions/api/eventsApi.ts](src/features/exhibitions/api/eventsApi.ts)
+  - `GET /api/events`
+  - `GET /api/events/search`
+  - `GET /api/events/{eventId}`
+  - `POST /api/events/{eventId}/reviews`
+  - `GET /api/events/{eventId}/reviews`
+  - `DELETE /api/events/{eventId}/reviews/{reviewId}`
+  - `POST /api/events/{eventId}/actions/homepage-click`
+- [src/features/exhibitions/api/bookmarksApi.ts](src/features/exhibitions/api/bookmarksApi.ts)
+  - `POST /api/bookmarks/{eventId}`
+  - `DELETE /api/bookmarks/{eventId}`
+- [src/features/user/api/authApi.ts](src/features/user/api/authApi.ts)
+  - `POST /api/auth/signup`
+  - `POST /api/auth/login`
+  - `POST /api/auth/guest-login`
+  - `POST /api/auth/logout`
+- [src/features/user/api/preferencesApi.ts](src/features/user/api/preferencesApi.ts)
+  - `GET /api/preferences/categories`
+  - `POST /api/preferences`
+- [src/features/user/api/myPageApi.ts](src/features/user/api/myPageApi.ts)
+  - `GET /api/users/me`
+  - `PUT /api/users/me/nickname`
+  - `PUT /api/users/me/profile_image`
+  - `GET /api/users/me/reviews`
+  - `GET /api/users/me/bookmarks`
 
-전시 API 함수는 `src/features/exhibitions/api/eventsApi.ts`에 있습니다.
+## 화면별 참고
 
-- `GET /api/events`
-- `GET /api/events/{eventId}`
-- `POST /api/events/{eventId}/reviews`
-- `GET /api/events/{eventId}/reviews`
+- 홈 추천 API는 로그인 사용자 전용이며, 백엔드에 저장된 개인화 추천을 조회합니다.
+- 취향 선택 화면은 API가 반환하는 최대 20개 seed event 중 5개 이상 20개 이하를 선택해 저장합니다.
+- 전체보기 화면은 기본 목록 정렬에서 `GET /api/events`를 사용하고, 검색어 입력 또는 거리순 정렬에서는 `GET /api/events/search`를 사용합니다.
+- 전체보기의 `sort=match`는 취향 기반 추천 결과 특성상 최대 10개의 전시·공연만 표시된다는 안내 문구를 함께 보여줍니다.
+- 상세 화면의 “홈페이지 이동하기”는 먼저 `POST /api/events/{eventId}/actions/homepage-click`를 호출하고, 수집 API 성공 여부와 관계없이 외부 URL로 이동합니다.
 
-북마크 API 함수는 `src/features/exhibitions/api/bookmarksApi.ts`에 있습니다.
+## 검증
 
-- `POST /api/bookmarks/{eventId}`
-- `DELETE /api/bookmarks/{eventId}`
+코드 변경 후에는 다음 명령어를 실행해 확인합니다.
 
-인증 API 함수는 `src/features/user/api/authApi.ts`에 있습니다.
-
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-
-취향 선택 API 함수는 `src/features/user/api/preferencesApi.ts`에 있습니다.
-
-- `GET /api/preferences/categories`
-- `POST /api/preferences`
-
-마이페이지 API 함수는 `src/features/user/api/myPageApi.ts`에 있습니다.
-
-- `GET /api/users/me`
-- `PUT /api/users/me/nickname`
-- `PUT /api/users/me/profile_image`
-- `GET /api/users/me/reviews`
-- `GET /api/users/me/bookmarks`
-
-토큰이 필요한 요청은 `Authorization: Bearer {accessToken}` 헤더를 포함합니다. 파일 업로드 요청은 `FormData`를 사용하며 `Content-Type`을 직접 지정하지 않습니다. 마이페이지 계열, 리뷰 작성, 취향 저장, 북마크 추가/삭제 요청에서 401이 발생하면 저장된 인증 상태를 삭제하고 `/user/login`으로 이동합니다.
-
-취향 저장 요청은 회원가입 직후 session 상태가 남아 있는 onboarding 흐름에서만 사용할 수 있습니다. 선택한 이벤트 ID 배열을 `{ success: true, data: selectedEventIds, error: null }` 형태로 감싸서 전송합니다. 화면에서는 이벤트를 정확히 5개 선택해야 저장할 수 있습니다. 응답으로 받은 이벤트 ID는 사용자 아이디별 `localStorage` 캐시에 저장합니다. 홈 추천 API는 로그인 사용자 전용이며, 캐시된 4~5개 ID를 반복 `eventIds` query parameter로 전송합니다. 유효한 JWT 또는 현재 사용자의 저장된 이벤트 ID가 없으면 추천 API를 호출하지 않습니다. 로그인 직후와 홈 화면의 로고 클릭 시에도 개인화 추천 조회를 시도합니다.
-
-## 데이터 소스
-
-화면에 표시하는 이벤트, 추천, 취향 선택, 마이페이지 데이터는 API에서 불러옵니다. 전시 전체보기의 필터 선택지는 해당 페이지의 UI 상수로 관리합니다.
-
-홈은 `src/api/homeApi.ts`, 전시 탐색/상세/리뷰 작성은 `src/features/exhibitions/api/eventsApi.ts`, 북마크 추가/삭제는 `src/features/exhibitions/api/bookmarksApi.ts`, 취향 선택은 `src/features/user/api/preferencesApi.ts`, 마이페이지의 프로필/리뷰/북마크 목록은 `src/features/user/api/myPageApi.ts`의 API 함수를 통해 처리합니다.
-
-## 현재 구현 범위
-
-- 기존 전시 검색 화면은 전시 전체보기 화면으로 통합되었습니다. `/exhibitions/search`는 `/exhibitions/all`로 이동합니다.
-- 전시 전체보기의 장르, 지역, 기간, 관람료, 날짜, 정렬 조건은 API 요청에 포함됩니다. 키워드 검색은 받은 목록을 브라우저에서 필터링합니다.
-- 전시 전체보기의 `더 보기`는 이미 받은 목록을 화면에서 20개씩 나누어 보여줍니다.
-- 로그인 화면의 `로그인 유지`와 `계정 찾기`, 마이페이지의 북마크 하트와 후기 공유 버튼은 현재 UI만 제공하며 별도 동작은 연결되어 있지 않습니다.
-- 후기 작성 API에는 `rating`, `content`, `verificationImageUrl`을 전송합니다. 방문 시점과 공개 여부는 현재 폼에서만 관리합니다.
-
-## 개발 참고
-
-- 공통 화면 구조는 `src/components`의 `AppHeader`, `AppFooter`를 사용합니다.
-- 화면 스타일은 컴포넌트에서 직접 import하는 일반 CSS 파일로 관리합니다.
-- 기본 sans-serif 글꼴은 `src/index.css`의 `--font-sans` 변수를 사용합니다.
-- 기존 클래스명은 `home-*`, `detail-*`, `login-*`, `signup-*`, `preferences-*`, `mypage-*`처럼 화면 또는 기능 단위 prefix를 사용합니다.
-- 내부 페이지 이동에는 React Router의 `Link`를 사용합니다.
-- 코드 변경 후에는 `npm run lint`와 `npm run build`를 실행해 확인하는 것을 권장합니다.
+```bash
+npm run lint
+npm run build
+```

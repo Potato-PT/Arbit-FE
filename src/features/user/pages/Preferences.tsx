@@ -15,8 +15,8 @@ import {
 import '../styles/Preferences.css'
 
 const MIN_SELECTED_EVENT_COUNT = 5
-const MAX_SELECTED_EVENT_COUNT = 5
-const PAGE_SIZE = 15
+const SEED_EVENT_COUNT = 20
+const MAX_SELECTED_EVENT_COUNT = SEED_EVENT_COUNT
 
 function Preferences() {
   const location = useLocation()
@@ -27,12 +27,10 @@ function Preferences() {
   const [seedEvents, setSeedEvents] = useState<PreferenceSeedEvent[]>([])
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([])
   const [failedImageIds, setFailedImageIds] = useState<string[]>([])
-  const [visibleEventCount, setVisibleEventCount] = useState(PAGE_SIZE)
   const [isLoadingCategories, setIsLoadingCategories] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const hasMetMinimum = selectedEventIds.length >= MIN_SELECTED_EVENT_COUNT
-  const visibleEvents = seedEvents.slice(0, visibleEventCount)
 
   useEffect(() => {
     if (!isSignupOnboarding) {
@@ -144,7 +142,7 @@ function Preferences() {
         </section>
 
         <p className="preferences-description">
-          마음에 드는 항목을 <strong>최소 {MIN_SELECTED_EVENT_COUNT}개 이상</strong> 선택해 주세요.
+          추천 후보 {SEED_EVENT_COUNT}개 중 마음에 드는 항목을 <strong>{MIN_SELECTED_EVENT_COUNT}개 이상</strong> 선택해 주세요.
           선택하신 취향을 바탕으로 당신만의 큐레이션이 시작됩니다.
         </p>
 
@@ -161,7 +159,7 @@ function Preferences() {
             {seedEvents.length > 0 && (
               <>
                 <section className="preferences-grid" aria-label="전시·공연 목록">
-                  {visibleEvents.map((seedEvent) => {
+                  {seedEvents.map((seedEvent) => {
                     const isSelected = selectedEventIds.includes(seedEvent.event_id)
                     const hasPoster =
                       Boolean(seedEvent.posterImage) &&
@@ -203,16 +201,6 @@ function Preferences() {
                   })}
                 </section>
 
-                {visibleEventCount < seedEvents.length && (
-                  <button
-                    className="preferences-load-more"
-                    type="button"
-                    onClick={() => setVisibleEventCount((count) => count + PAGE_SIZE)}
-                  >
-                    <span aria-hidden="true">⌄</span>
-                    더 보기
-                  </button>
-                )}
               </>
             )}
           </>

@@ -5,11 +5,7 @@ import { ApiError } from '../../user/api/authApi'
 
 export type BookmarkEventId = string
 
-export type BookmarkMutationResponse = {
-  eventId?: BookmarkEventId
-  bookmarked?: boolean
-  message?: string
-}
+export type BookmarkMutationResponse = null
 
 type ApiSuccessResponse<T> = {
   success: true
@@ -106,7 +102,7 @@ async function requestBookmark(eventId: BookmarkEventId, method: 'POST' | 'DELET
     },
   )
 
-  return parseBookmarkResponse<BookmarkMutationResponse>(response)
+  await parseBookmarkResponse<BookmarkMutationResponse>(response)
 }
 
 export function addBookmark(eventId: BookmarkEventId) {

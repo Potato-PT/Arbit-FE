@@ -18,10 +18,12 @@ export type MyProfile = {
 
 export type MyReview = {
   reviewId: number
+  event_id: string
   title: string
   posterImageUrl: string
   starScore: number
   content: string
+  likes?: number
   createdAt: string
 }
 

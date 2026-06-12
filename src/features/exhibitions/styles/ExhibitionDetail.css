@@ -412,6 +412,21 @@
   transform: translateY(-1px);
 }
 
+.homepage-button.is-disabled {
+  border-color: rgba(28, 27, 27, 0.14);
+  background: #efebe5;
+  color: #9a948c;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.homepage-button.is-disabled:hover {
+  border-color: rgba(28, 27, 27, 0.14);
+  background: #efebe5;
+  box-shadow: none;
+  transform: none;
+}
+
 .bookmark-button {
   border: 1px solid rgba(28, 27, 27, 0.16);
   background:

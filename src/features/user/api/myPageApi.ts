@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../../../api/config'
 import { clearAuthStorage } from '../../../api/authStorage'
-import { createJsonHeaders, createUploadHeaders } from '../../../api/headers'
+import { createAuthorizationHeaders, createJsonHeaders, createUploadHeaders } from '../../../api/headers'
 import { ApiError } from './authApi'
 import type {
   ApiResponse,
@@ -13,6 +13,7 @@ import type {
 } from '../types/myPageApi'
 
 const MY_PAGE_API_PATH = '/api/users/me'
+const EVENTS_API_PATH = '/api/events'
 const LOGIN_PATH = '/user/login'
 
 function handleUnauthorized() {
@@ -51,7 +52,7 @@ async function requestMyPage<T>(path: string, init?: RequestInit): Promise<T> {
 export function getMyProfile() {
   return requestMyPage<MyProfile>(MY_PAGE_API_PATH, {
     method: 'GET',
-    headers: createJsonHeaders(),
+    headers: createAuthorizationHeaders(),
   })
 }
 
@@ -79,16 +80,16 @@ export function updateProfileImage(file: File) {
 export function getMyReviews() {
   return requestMyPage<MyReview[]>(`${MY_PAGE_API_PATH}/reviews`, {
     method: 'GET',
-    headers: createJsonHeaders(),
+    headers: createAuthorizationHeaders(),
   })
 }
 
-export async function deleteMyReview(reviewId: string | number) {
+export async function deleteMyReview(eventId: string, reviewId: string | number) {
   const response = await fetch(
-    `${API_BASE_URL}${MY_PAGE_API_PATH}/reviews/${encodeURIComponent(String(reviewId))}`,
+    `${API_BASE_URL}${EVENTS_API_PATH}/${encodeURIComponent(eventId)}/reviews/${encodeURIComponent(String(reviewId))}`,
     {
       method: 'DELETE',
-      headers: createJsonHeaders(),
+      headers: createAuthorizationHeaders(),
     },
   )
 
@@ -97,11 +98,15 @@ export async function deleteMyReview(reviewId: string | number) {
     throw new ApiError('로그인이 필요합니다.', response.status)
   }
 
+  if (response.status === 403) {
+    throw new ApiError('삭제 권한이 없습니다.', response.status)
+  }
+
   if (response.status === 404) {
     throw new ApiError('리뷰를 찾을 수 없습니다.', response.status)
   }
 
-  if (response.status === 204) {
+  if (response.status === 204 || response.ok) {
     return
   }
 
@@ -118,6 +123,6 @@ export async function deleteMyReview(reviewId: string | number) {
 export function getMyBookmarks() {
   return requestMyPage<MyBookmark[]>(`${MY_PAGE_API_PATH}/bookmarks`, {
     method: 'GET',
-    headers: createJsonHeaders(),
+    headers: createAuthorizationHeaders(),
   })
 }

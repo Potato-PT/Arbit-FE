@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_API_PROXY_TARGET || 'http://34.138.160.76:8080',
+          target: env.VITE_API_PROXY_TARGET || 'https://piec.store',
           changeOrigin: true,
         },
       },

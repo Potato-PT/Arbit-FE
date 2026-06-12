@@ -5,7 +5,7 @@ import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
 import StatusMessage from '../../../components/StatusMessage'
 import { getHome, getHomeRecommendations } from '../../../api/homeApi'
-import { readAccessToken, readRecommendationEventIds } from '../../../api/authStorage'
+import { readAccessToken } from '../../../api/authStorage'
 import { hasValidAccessTokenForApi } from '../../../api/headers'
 import { ApiError } from '../../user/api/authApi'
 import { addBookmark, removeBookmark } from '../../exhibitions/api/bookmarksApi'
@@ -18,8 +18,6 @@ import type {
   RecommendationApiItem,
   RecommendedExhibition,
 } from '../../../types/home'
-
-const missingPreferencesMessage = '회원가입 시 저장된 취향 추천 정보가 없습니다.'
 
 function LoggedInHome() {
   const location = useLocation()
@@ -73,24 +71,16 @@ function LoggedInHome() {
           !initialRecommendations &&
           !initialRecommendationMessage
         ) {
-          const eventIds = readRecommendationEventIds()
-
-          if (eventIds.length === 0) {
-            nextRecommendationMessage = missingPreferencesMessage
-          } else {
-            try {
-              nextHomeData = mergeHomeRecommendations(
-                home,
-                await getHomeRecommendations(eventIds),
-              )
-            } catch (error) {
-              if (error instanceof ApiError && error.status === 400) {
-                nextRecommendationMessage = missingPreferencesMessage
-              } else if (error instanceof ApiError && error.status === 401) {
-                nextRecommendationMessage = '로그인이 만료되었습니다. 다시 로그인하면 맞춤 추천을 확인할 수 있습니다.'
-              } else {
-                throw error
-              }
+          try {
+            nextHomeData = mergeHomeRecommendations(
+              home,
+              await getHomeRecommendations(),
+            )
+          } catch (error) {
+            if (error instanceof ApiError && error.status === 401) {
+              nextRecommendationMessage = '로그인이 만료되었습니다. 다시 로그인하면 맞춤 추천을 확인할 수 있습니다.'
+            } else {
+              throw error
             }
           }
         }
@@ -124,19 +114,12 @@ function LoggedInHome() {
       return
     }
 
-    const eventIds = readRecommendationEventIds()
-
-    if (eventIds.length === 0) {
-      setRecommendationMessage(missingPreferencesMessage)
-      return
-    }
-
     setIsLoading(true)
     setErrorMessage('')
     setRecommendationMessage('')
 
     try {
-      const recommendations = await getHomeRecommendations(eventIds)
+      const recommendations = await getHomeRecommendations()
 
       setHomeData((current) =>
         current ? mergeHomeRecommendations(current, recommendations) : current,
@@ -146,11 +129,6 @@ function LoggedInHome() {
 
       if (error instanceof ApiError && error.status === 401) {
         setRecommendationMessage('로그인이 만료되었습니다. 다시 로그인하면 맞춤 추천을 확인할 수 있습니다.')
-        return
-      }
-
-      if (error instanceof ApiError && error.status === 400) {
-        setRecommendationMessage(missingPreferencesMessage)
         return
       }
 

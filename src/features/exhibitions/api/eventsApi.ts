@@ -26,6 +26,7 @@ export type EventSummary = {
   matchScore?: number
   bookmarked?: boolean
   rating?: number
+  averageRating?: number
   distanceKm?: number
   distance?: number
   location?: string
@@ -256,6 +257,18 @@ export async function getEventDetail(eventId: string) {
   })
 
   return parseEventsResponse<EventDetail>(response)
+}
+
+export async function recordHomepageClick(eventId: string) {
+  const response = await fetch(
+    `${API_BASE_URL}${EVENTS_API_PATH}/${encodeURIComponent(eventId)}/actions/homepage-click`,
+    {
+      method: 'POST',
+      headers: createAuthorizationHeaders(),
+    },
+  )
+
+  return parseEventsResponse<null>(response)
 }
 
 export async function createEventReview(eventId: string, request: CreateReviewRequest) {

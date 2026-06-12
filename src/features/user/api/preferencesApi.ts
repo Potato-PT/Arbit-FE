@@ -39,6 +39,7 @@ type ApiResponse<T> = ApiSuccessResponse<T> | ApiFailureResponse
 
 const PREFERENCES_API_PATH = '/api/preferences'
 const LOGIN_PATH = '/user/login'
+const MAX_PREFERENCE_SEED_EVENTS = 20
 
 function handleUnauthorized() {
   clearAuthStorage()
@@ -119,7 +120,7 @@ export async function getPreferenceCategories() {
     throw new ApiError('취향 선택 이벤트 응답 형식이 올바르지 않습니다.', response.status)
   }
 
-  return normalizePreferenceSeedEvents(seedEvents)
+  return normalizePreferenceSeedEvents(seedEvents).slice(0, MAX_PREFERENCE_SEED_EVENTS)
 }
 
 function normalizePreferenceSeedEvents(seedEvents: unknown[]): PreferenceSeedEvent[] {
