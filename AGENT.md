@@ -74,7 +74,7 @@ Current stable endpoint rules:
 - `POST /api/preferences` requires bearer auth and saves 5 to 20 selected event IDs.
 - `GET /api/events` is public and uses only `deadline`, `latest`, and `rating` sort values.
 - `GET /api/events/matches` requires bearer auth and is used for match/recommendation sort.
-- `GET /api/events/search` is the search endpoint and is also used for distance sort.
+- `GET /api/events/search` is the search endpoint and is also used for filtered all-exhibition queries and distance sort.
 - `POST /api/events/{eventId}/actions/homepage-click` records homepage clicks. External navigation must not depend on this request succeeding.
 - Bookmark, review mutation, preference save, My Page, and recommendation APIs require bearer auth as documented in Swagger.
 

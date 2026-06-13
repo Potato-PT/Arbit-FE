@@ -33,7 +33,6 @@ const genreFilters = [
   '전시/미술',
   '클래식',
   '교육/체험',
-  '설치 예술',
   '축제',
   '연극',
   '콘서트',
@@ -43,11 +42,38 @@ const genreFilters = [
   '영화',
   '기타',
 ]
-const districts = ['종로구', '중구', '용산구', '성동구', '마포구', '서초구', '강남구', '강서구', '송파구']
+const districts = [
+  '종로구',
+  '중구',
+  '용산구',
+  '성동구',
+  '광진구',
+  '동대문구',
+  '중랑구',
+  '성북구',
+  '강북구',
+  '도봉구',
+  '노원구',
+  '은평구',
+  '서대문구',
+  '마포구',
+  '양천구',
+  '강서구',
+  '구로구',
+  '금천구',
+  '영등포구',
+  '동작구',
+  '관악구',
+  '서초구',
+  '강남구',
+  '송파구',
+  '강동구',
+]
 const initialDisplayCount = 20
 const pageSize = 20
 const dayInMs = 24 * 60 * 60 * 1000
 const loginRequiredForMatchMessage = '추천순은 로그인 후 이용할 수 있습니다.'
+const distanceSortMessage = '성신여대를 기준으로 가까운 순서로 보여드려요.'
 const fallbackSortOption: SortOption = '마감 임박순'
 
 function AllExhibitions() {
@@ -99,6 +125,7 @@ function AllExhibitions() {
   const visibleExhibitions = filteredExhibitions.slice(0, visibleCount)
   const remainingCount = Math.max(filteredExhibitions.length - visibleExhibitions.length, 0)
   const showMatchSortNotice = sortOption === '추천순'
+  const showDistanceSortNotice = sortOption === '거리순'
 
   useEffect(() => {
     const nextSortOption = getSortOptionFromQuery(sortQuery)
@@ -125,12 +152,6 @@ function AllExhibitions() {
       setErrorMessage('')
 
       try {
-        const coordinates = sortOption === '거리순' ? await getCurrentCoordinates() : undefined
-
-        if (sortOption === '거리순' && !coordinates) {
-          throw new ApiError('거리순 정렬을 사용하려면 위치 권한이 필요합니다.', 400)
-        }
-
         if (sortOption === '추천순' && !hasValidAccessTokenForApi()) {
           window.alert(loginRequiredForMatchMessage)
           const previousSortOption = getFallbackSortOption(previousSortOptionRef.current)
@@ -141,7 +162,16 @@ function AllExhibitions() {
         }
 
         const trimmedSearchQuery = searchQuery.trim()
-        const shouldUseSearchEndpoint = Boolean(trimmedSearchQuery) || sortOption === '거리순'
+        const hasAppliedFilters = hasSearchFilters({
+          activeFilter,
+          selectedDistricts,
+          selectedPeriods,
+          selectedPriceTypes,
+          startDate,
+          endDate,
+        })
+        const shouldUseSearchEndpoint =
+          Boolean(trimmedSearchQuery) || sortOption === '거리순' || hasAppliedFilters
         let response: Awaited<ReturnType<typeof getEvents>> | Awaited<ReturnType<typeof searchEvents>>
 
         if (sortOption === '추천순') {
@@ -159,17 +189,11 @@ function AllExhibitions() {
             status: selectedPeriods.map(toSearchStatus),
             free: toSearchFree(selectedPriceTypes),
             sort: toSearchSort(sortOption),
-            lat: coordinates?.lat,
-            lng: coordinates?.lng,
             page: 0,
             size: pageSize,
           })
         } else {
           response = await getEvents({
-            category: activeFilter === '전체' ? undefined : activeFilter,
-            district: selectedDistricts,
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
             sort: toEventsSort(sortOption),
           })
         }
@@ -506,6 +530,11 @@ function AllExhibitions() {
                 추천순은 취향 기반으로 최대 10개의 전시·공연만 표시됩니다.
               </p>
             )}
+            {showDistanceSortNotice && (
+              <p className="all-sort-notice">
+                {distanceSortMessage}
+              </p>
+            )}
             <button className="all-mobile-filter-button" type="button" onClick={() => setIsMobileFilterOpen(true)}>
               <FilterIcon />
               필터
@@ -630,6 +659,31 @@ function toggleListValue<T>(values: T[], value: T) {
   }
 
   return [...values, value]
+}
+
+function hasSearchFilters({
+  activeFilter,
+  selectedDistricts,
+  selectedPeriods,
+  selectedPriceTypes,
+  startDate,
+  endDate,
+}: {
+  activeFilter: string
+  selectedDistricts: string[]
+  selectedPeriods: PeriodFilter[]
+  selectedPriceTypes: AllExhibitionPriceType[]
+  startDate: string
+  endDate: string
+}) {
+  return (
+    activeFilter !== '전체' ||
+    selectedDistricts.length > 0 ||
+    selectedPeriods.length > 0 ||
+    selectedPriceTypes.length > 0 ||
+    Boolean(startDate) ||
+    Boolean(endDate)
+  )
 }
 
 function getAvailabilityLabel(item: AllExhibition, today: Date) {
@@ -873,25 +927,6 @@ function matchesPeriodFilter(status: string, period: PeriodFilter) {
   }
 
   return normalizedStatus === 'UPCOMING' || status === '예정'
-}
-
-function getCurrentCoordinates(): Promise<{ lat: number; lng: number } | undefined> {
-  if (typeof navigator === 'undefined' || !navigator.geolocation) {
-    return Promise.resolve(undefined)
-  }
-
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        })
-      },
-      () => resolve(undefined),
-      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 8_000 },
-    )
-  })
 }
 
 function formatDistanceAndRating(distanceKm: number, rating?: number) {

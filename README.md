@@ -95,7 +95,7 @@ VITE_API_PROXY_TARGET=
 - 취향 설정은 `GET /api/preferences/categories`가 반환한 최대 20개의 seed event 중 5개 이상 20개 이하를 선택해 저장합니다.
 - 전체보기에서 일반 정렬 `deadline`, `latest`, `rating`은 `GET /api/events`를 사용합니다.
 - 전체보기에서 추천순 `match`는 `GET /api/events/matches`를 사용하며 로그인 사용자가 필요합니다.
-- 검색어 입력 또는 거리순 정렬은 기존 검색 API `GET /api/events/search`를 사용합니다.
+- 검색어 입력, 필터 적용 또는 거리순 정렬은 기존 검색 API `GET /api/events/search`를 사용합니다.
 - 상세 화면의 홈페이지 버튼은 외부 URL을 정규화한 뒤 새 탭으로 열고, 클릭 수집 API 실패 여부와 관계없이 외부 이동을 유지합니다.
 
 ## 폴더 구조
