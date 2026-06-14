@@ -36,7 +36,7 @@ Routes are declared in `src/main.tsx`.
 - `/exhibitions/:id/review`: review writing
 - `/user/login`: login
 - `/user/signup`: signup
-- `/user/preferences`: preference onboarding
+- `/user/preferences`: preference setup for signup onboarding and logged-in users
 - `/user/mypage`: My Page
 
 Legacy `/exhibitions/search` and `/exhibition/all` redirect to `/exhibitions/all`.

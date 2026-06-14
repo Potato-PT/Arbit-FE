@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import {
   completePreferencesOnboarding,
+  hasStoredLoginStatus,
   hasPreferencesOnboarding,
   saveRecommendationEventIds,
 } from '../../../api/authStorage'
@@ -24,6 +25,7 @@ function Preferences() {
   const isSignupOnboarding =
     isSignupOnboardingState(location.state) &&
     hasPreferencesOnboarding()
+  const canAccessPreferences = isSignupOnboarding || hasStoredLoginStatus()
   const [seedEvents, setSeedEvents] = useState<PreferenceSeedEvent[]>([])
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([])
   const [failedImageIds, setFailedImageIds] = useState<string[]>([])
@@ -33,8 +35,8 @@ function Preferences() {
   const hasMetMinimum = selectedEventIds.length >= MIN_SELECTED_EVENT_COUNT
 
   useEffect(() => {
-    if (!isSignupOnboarding) {
-      navigate('/', { replace: true })
+    if (!canAccessPreferences) {
+      navigate('/user/login', { replace: true })
       return
     }
 
@@ -71,7 +73,7 @@ function Preferences() {
     return () => {
       ignore = true
     }
-  }, [isSignupOnboarding, navigate])
+  }, [canAccessPreferences, navigate])
 
   const toggleSeedEvent = (eventId: string) => {
     setSelectedEventIds((currentEventIds) => {
@@ -108,7 +110,9 @@ function Preferences() {
         console.warn('Recommendation event IDs were not cached after saving preferences.')
       }
 
-      completePreferencesOnboarding()
+      if (isSignupOnboarding) {
+        completePreferencesOnboarding()
+      }
       navigate('/', { replace: true })
     } catch (error) {
       if (error instanceof ApiError && error.status === 400) {
@@ -123,7 +127,7 @@ function Preferences() {
     }
   }
 
-  if (!isSignupOnboarding) {
+  if (!canAccessPreferences) {
     return null
   }
 
