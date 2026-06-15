@@ -74,6 +74,10 @@ const pageSize = 20
 const dayInMs = 24 * 60 * 60 * 1000
 const loginRequiredForMatchMessage = '추천순은 로그인 후 이용할 수 있습니다.'
 const distanceSortMessage = '성신여대를 기준으로 가까운 순서로 보여드려요.'
+const sungshinUniversityCoordinates = {
+  lat: 37.5914,
+  lng: 127.0221,
+}
 const fallbackSortOption: SortOption = '마감 임박순'
 
 function AllExhibitions() {
@@ -189,6 +193,8 @@ function AllExhibitions() {
             status: selectedPeriods.map(toSearchStatus),
             free: toSearchFree(selectedPriceTypes),
             sort: toSearchSort(sortOption),
+            lat: sortOption === '거리순' ? sungshinUniversityCoordinates.lat : undefined,
+            lng: sortOption === '거리순' ? sungshinUniversityCoordinates.lng : undefined,
             page: 0,
             size: pageSize,
           })
