@@ -4,7 +4,11 @@ import '../styles/Login.css'
 import artGallery from '../../../assets/artgallery.png'
 import AppFooter from '../../../components/AppFooter'
 import AppHeader from '../../../components/AppHeader'
-import { beginPreferencesOnboarding, saveAuthenticatedUsername } from '../../../api/authStorage'
+import {
+  beginPreferencesOnboarding,
+  clearAuthenticatedUsername,
+  saveAuthenticatedUsername,
+} from '../../../api/authStorage'
 import { getHomeRecommendations } from '../../../api/homeApi'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { ApiError, guestLogin, login as loginUser } from '../api/authApi'
@@ -64,6 +68,7 @@ function Login() {
     try {
       const tokens = await guestLogin()
       setAuthTokens(tokens)
+      clearAuthenticatedUsername()
       beginPreferencesOnboarding()
       navigate('/user/preferences', { replace: true, state: { fromSignup: true } })
     } catch {

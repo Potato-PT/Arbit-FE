@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { readAccessToken } from '../../../api/authStorage'
+import {
+  readAccessToken,
+  readAuthenticatedUsername,
+  resolveResidentialAreaCoordinates,
+  type UserLocationCoordinates,
+} from '../../../api/authStorage'
 import { hasValidAccessTokenForApi } from '../../../api/headers'
 import {
   getEvents,
@@ -13,6 +18,7 @@ import {
   type EventSummary,
 } from '../api/eventsApi'
 import { ApiError } from '../../user/api/authApi'
+import { getMyProfile } from '../../user/api/myPageApi'
 import { addBookmark, removeBookmark } from '../api/bookmarksApi'
 import type {
   AllExhibition,
@@ -73,10 +79,10 @@ const initialDisplayCount = 20
 const pageSize = 20
 const dayInMs = 24 * 60 * 60 * 1000
 const loginRequiredForMatchMessage = '추천순은 로그인 후 이용할 수 있습니다.'
-const distanceSortMessage = '성신여대를 기준으로 가까운 순서로 보여드려요.'
-const sungshinUniversityCoordinates = {
+const defaultDistanceLocation = {
   lat: 37.5914,
   lng: 127.0221,
+  label: '성신여대',
 }
 const fallbackSortOption: SortOption = '마감 임박순'
 
@@ -99,6 +105,11 @@ function AllExhibitions() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [pendingBookmarkIds, setPendingBookmarkIds] = useState<Set<string>>(() => new Set())
+  const [profileDistanceLocation, setProfileDistanceLocation] =
+    useState<UserLocationCoordinates | null>(null)
+  const [isProfileLocationLoading, setIsProfileLocationLoading] = useState(() =>
+    shouldLoadAuthenticatedProfileLocation(),
+  )
   const nextCardRef = useRef<HTMLElement | null>(null)
   const previousSortOptionRef = useRef<SortOption>(sortOption)
 
@@ -130,6 +141,50 @@ function AllExhibitions() {
   const remainingCount = Math.max(filteredExhibitions.length - visibleExhibitions.length, 0)
   const showMatchSortNotice = sortOption === '추천순'
   const showDistanceSortNotice = sortOption === '거리순'
+  const distanceSortLocation = profileDistanceLocation ?? defaultDistanceLocation
+  const distanceSortMessage =
+    distanceSortLocation === defaultDistanceLocation
+      ? `${defaultDistanceLocation.label}를 기준으로 가까운 순서로 보여드려요.`
+      : `회원가입 때 입력한 ${distanceSortLocation.label} 기준으로 가까운 순서로 보여드려요.`
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadProfileLocation() {
+      if (!shouldLoadAuthenticatedProfileLocation()) {
+        setProfileDistanceLocation(null)
+        setIsProfileLocationLoading(false)
+        return
+      }
+
+      setIsProfileLocationLoading(true)
+
+      try {
+        const profile = await getMyProfile()
+        const nextProfileDistanceLocation = profile.residentialArea
+          ? resolveResidentialAreaCoordinates(profile.residentialArea)
+          : null
+
+        if (!ignore) {
+          setProfileDistanceLocation(nextProfileDistanceLocation)
+        }
+      } catch {
+        if (!ignore) {
+          setProfileDistanceLocation(null)
+        }
+      } finally {
+        if (!ignore) {
+          setIsProfileLocationLoading(false)
+        }
+      }
+    }
+
+    void loadProfileLocation()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   useEffect(() => {
     const nextSortOption = getSortOptionFromQuery(sortQuery)
@@ -151,6 +206,15 @@ function AllExhibitions() {
   useEffect(() => {
     let ignore = false
 
+    if (sortOption === '거리순' && isProfileLocationLoading) {
+      setIsLoading(true)
+      setErrorMessage('')
+
+      return () => {
+        ignore = true
+      }
+    }
+
     async function loadEvents() {
       setIsLoading(true)
       setErrorMessage('')
@@ -166,6 +230,7 @@ function AllExhibitions() {
         }
 
         const trimmedSearchQuery = searchQuery.trim()
+        const isDistanceSort = sortOption === '거리순'
         const hasAppliedFilters = hasSearchFilters({
           activeFilter,
           selectedDistricts,
@@ -174,8 +239,7 @@ function AllExhibitions() {
           startDate,
           endDate,
         })
-        const shouldUseSearchEndpoint =
-          Boolean(trimmedSearchQuery) || sortOption === '거리순' || hasAppliedFilters
+        const shouldUseSearchEndpoint = Boolean(trimmedSearchQuery) || hasAppliedFilters
         let response: Awaited<ReturnType<typeof getEvents>> | Awaited<ReturnType<typeof searchEvents>>
 
         if (sortOption === '추천순') {
@@ -193,14 +257,16 @@ function AllExhibitions() {
             status: selectedPeriods.map(toSearchStatus),
             free: toSearchFree(selectedPriceTypes),
             sort: toSearchSort(sortOption),
-            lat: sortOption === '거리순' ? sungshinUniversityCoordinates.lat : undefined,
-            lng: sortOption === '거리순' ? sungshinUniversityCoordinates.lng : undefined,
+            lat: isDistanceSort ? distanceSortLocation.lat : undefined,
+            lng: isDistanceSort ? distanceSortLocation.lng : undefined,
             page: 0,
             size: pageSize,
           })
         } else {
           response = await getEvents({
             sort: toEventsSort(sortOption),
+            lat: isDistanceSort ? distanceSortLocation.lat : undefined,
+            lng: isDistanceSort ? distanceSortLocation.lng : undefined,
           })
         }
 
@@ -237,6 +303,8 @@ function AllExhibitions() {
     selectedPeriods,
     selectedPriceTypes,
     setSearchParams,
+    distanceSortLocation,
+    isProfileLocationLoading,
     sortOption,
     startDate,
   ])
@@ -659,6 +727,10 @@ function updateEventBookmark(events: EventSummary[], eventId: string, bookmarked
   })
 }
 
+function shouldLoadAuthenticatedProfileLocation() {
+  return hasValidAccessTokenForApi() && Boolean(readAuthenticatedUsername())
+}
+
 function toggleListValue<T>(values: T[], value: T) {
   if (values.includes(value)) {
     return values.filter((item) => item !== value)
@@ -860,7 +932,7 @@ function toEventsSort(sortOption: SortOption): EventsSort | undefined {
     '마감 임박순': 'deadline',
     최신순: 'latest',
     평점순: 'rating',
-    거리순: undefined,
+    거리순: 'distance',
   }
 
   return sortByOption[sortOption]

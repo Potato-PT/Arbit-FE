@@ -72,9 +72,10 @@ Current stable endpoint rules:
 - `GET /api/home/recommendations` requires bearer auth.
 - `GET /api/preferences/categories` is public and the UI uses up to 20 seed events.
 - `POST /api/preferences` requires bearer auth and saves 5 to 20 selected event IDs.
-- `GET /api/events` is public and uses only `deadline`, `latest`, and `rating` sort values.
+- `GET /api/events` is public and supports `deadline`, `latest`, `rating`, and `distance`; distance requires `lat` and `lng`.
 - `GET /api/events/matches` requires bearer auth and is used for match/recommendation sort.
-- `GET /api/events/search` is the search endpoint and is also used for filtered all-exhibition queries and distance sort.
+- `GET /api/events/search` is the search endpoint and is used for filtered all-exhibition queries; filtered distance searches also send `sort=distance`, `lat`, and `lng`.
+- Distance sort should use `GET /api/users/me.residentialArea` for logged-in members and fall back to the Sungshin coordinates only when no usable member location is available.
 - `POST /api/events/{eventId}/actions/homepage-click` records homepage clicks. External navigation must not depend on this request succeeding.
 - Bookmark, review mutation, preference save, My Page, and recommendation APIs require bearer auth as documented in Swagger.
 

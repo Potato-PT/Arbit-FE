@@ -3,7 +3,7 @@ import { clearAuthStorage } from '../../../api/authStorage'
 import { createAuthorizationHeaders } from '../../../api/headers'
 import { ApiError } from '../../user/api/authApi'
 
-export type EventsSort = 'deadline' | 'latest' | 'rating'
+export type EventsSort = 'deadline' | 'latest' | 'rating' | 'distance'
 export type EventSearchSort = 'deadline' | 'latest' | 'rating' | 'distance'
 export type EventStatus = 'ongoing' | 'upcoming' | 'ended' | '진행중' | '예정' | '종료'
 export type EventSearchStatus = 'ONGOING' | 'UPCOMING' | 'CLOSED'
@@ -81,6 +81,8 @@ export type EventsQuery = {
   startDate?: string
   endDate?: string
   sort?: EventsSort
+  lat?: number
+  lng?: number
 }
 
 export type EventMatchesQuery = Omit<EventsQuery, 'sort'>

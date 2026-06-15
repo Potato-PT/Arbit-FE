@@ -14,6 +14,7 @@ export type MyProfile = {
   nickname: string
   subscribedAt: string
   tasteKeywords: string[]
+  residentialArea?: string | null
 }
 
 export type MyReview = {

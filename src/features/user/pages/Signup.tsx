@@ -2,7 +2,11 @@ import { useMemo, useState, type ComponentProps } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../../components/AppHeader'
 import AppFooter from '../../../components/AppFooter'
-import { beginPreferencesOnboarding, saveAuthenticatedUsername } from '../../../api/authStorage'
+import {
+  beginPreferencesOnboarding,
+  saveAuthenticatedUserLocation,
+  saveAuthenticatedUsername,
+} from '../../../api/authStorage'
 import { useAuthStatus } from '../../../hooks/useAuthStatus'
 import { ApiError, signup, type Gender } from '../api/authApi'
 import '../styles/Signup.css'
@@ -61,6 +65,7 @@ function Signup() {
 
       setAuthTokens(tokens)
       saveAuthenticatedUsername(username)
+      saveAuthenticatedUserLocation(username, residentialArea)
       beginPreferencesOnboarding()
       navigate('/user/preferences', { replace: true, state: { fromSignup: true } })
     } catch (error) {
